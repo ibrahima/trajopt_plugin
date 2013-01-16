@@ -79,6 +79,15 @@ include_directories(include
 ## Declare a cpp executable
 add_executable(test_traj src/test_traj.cpp)
 target_link_libraries(test_traj ${catkin_LIBRARIES} trajopt)
+
+set(MOVEIT_LIB_NAME moveit_trajopt_interface_ros)
+
+add_library(${MOVEIT_LIB_NAME} src/trajopt_interface_ros.cpp src/ros_rave_conversions.cpp)
+target_link_libraries(${MOVEIT_LIB_NAME}
+  ${catkin_LIBRARIES}
+  trajopt
+  )
+
 ## Add dependencies to the executable
 # add_dependencies(trajopt_plugin_node ${PROJECT_NAME})
 
