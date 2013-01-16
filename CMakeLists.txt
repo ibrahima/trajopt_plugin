@@ -6,9 +6,20 @@ project(trajopt_plugin)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS dynamic_reconfigure moveit_core moveit_ros_planning pluginlib roscpp tf)
 
+# Hardcode trajopt paths for now
+include_directories("$ENV{HOME}/research/trajopt/src")
+include_directories("$ENV{HOME}/research/trajopt/ext/json/include")
+include_directories("$ENV{HOME}/research/trajopt/ext/gtest/include")
+include_directories("$ENV{HOME}/research/trajopt/ext/bullet/src")
+
+link_directories("$ENV{HOME}/research/trajopt/build/lib")
+
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
 
+find_package(OpenRAVE 0.9 REQUIRED)
+
+include_directories( ${OpenRAVE_INCLUDE_DIRS})
 ## Uncomment this if the package has a setup.py. This macro ensures
 ## modules and scripts declared therein get installed
 # catkin_python_setup()
@@ -66,8 +77,8 @@ include_directories(include
 # )
 
 ## Declare a cpp executable
-# add_executable(trajopt_plugin_node src/trajopt_plugin_node.cpp)
-
+add_executable(test_traj src/test_traj.cpp)
+target_link_libraries(test_traj ${catkin_LIBRARIES} trajopt)
 ## Add dependencies to the executable
 # add_dependencies(trajopt_plugin_node ${PROJECT_NAME})
 
