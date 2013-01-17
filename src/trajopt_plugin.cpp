@@ -1,9 +1,9 @@
-#inCLUDE <moveiT/PLANNing_interface/planning_interface.h>
+#include <moveit/planning_interface/planning_interface.h>
 #include <moveit/planning_scene/planning_scene.h>
 #include <moveit/kinematic_model/kinematic_model.h>
 #include <moveit_msgs/GetMotionPlan.h>
 #include <trajopt_interface_ros/trajopt_interface_ros.h>
-#include <trajopt_interface_ros/rosconversions.h>
+// #include <trajopt_interface_ros/ros_rave_conversions.h>
 
 #include <boost/shared_ptr.hpp>
 
@@ -12,7 +12,7 @@
 namespace trajopt_interface_ros
 {
 
-class Trajoptlanner : public planning_interface::Planner
+class TrajoptPlanner : public planning_interface::Planner
 {
 public:
   void init(const kinematic_model::KinematicModelConstPtr& model)
@@ -71,5 +71,5 @@ private:
 
 } // trajopt_interface_ros
 
-PLUGINLIB_EXPORT_CLASS( trajopt_interface_ros::Trajoptlanner, 
+PLUGINLIB_EXPORT_CLASS( trajopt_interface_ros::TrajoptPlanner, 
                         planning_interface::Planner);

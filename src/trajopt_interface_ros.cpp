@@ -2,6 +2,8 @@
 #include <ipi/sco/optimizers.hpp>
 #include <trajopt_interface_ros/trajopt_interface_ros.h>
 #include <moveit/kinematic_state/conversions.h>
+#include <Eigen/Core>
+
 #include <Eigen/Dense>
 #include <trajopt_interface_ros/ros_rave_conversions.h>
 #include <trajopt/rave_utils.hpp>
@@ -46,18 +48,29 @@ bool TrajoptInterfaceROS::solve(const planning_scene::PlanningSceneConstPtr& pla
 
   ros::WallTime start_time = ros::WallTime::now();
 
-  Eigen::MatrixXd initTraj;
-
   trajopt::ProblemConstructionInfo pci(penv);
 
-  trajopt::TrajOptProbPtr prob = trajopt::ConstructProblem(pci);
-  
-  ipi::sco::BasicTrustRegionSQP opt(prob);
+  pci.init_info.type = trajopt::InitInfo::STATIONARY; // TODO: Make this a param
+
 
   const kinematic_model::JointModelGroup* model_group = 
     planning_scene->getKinematicModel()->getJointModelGroup(req.motion_plan_request.group_name);
 
+  OpenRAVE::RobotBase::ManipulatorPtr manip = getManipulatorFromGroup(robot, model_group);  
   int numJoints = model_group->getJointModels().size();
+  int numSteps = 10; // TODO: Configurable
+  // Json::Value conf;
+  // conf["basic_info"] = Json::Value();
+  // conf["basic_info"]["manip"] = manip->GetName();
+  // conf["basic_info"]["start_fixed"] = true;
+  
+  // conf["costs"] = Json::Value();
+  // Json::Value joint_vel_cost;
+  // joint_vel_cost["type"]="joint_vel";
+  // joint_vel_cost["name"]="jvel0";
+  // joint_vel_cost["params"]["coeffs"] = 1;
+  // conf["costs"].append(joint_vel_cost);
+
   Eigen::VectorXd initialState(numJoints);
   Eigen::VectorXd goalState(numJoints);
   // // LOG_INFO_FMT("Planning for %d joints", numJoints);
@@ -68,7 +81,8 @@ bool TrajoptInterfaceROS::solve(const planning_scene::PlanningSceneConstPtr& pla
                     initialState);
   // LOG_INFO("Got initial joint states as array");
   std::cout << initialState << std::endl;
-
+  trajopt::RobotAndDOFPtr rad(new trajopt::RobotAndDOF(robot, manip->GetArmIndices(), 0, OpenRAVE::Vector(0,0,1)));
+  pci.rad = rad; // trajopt::RADFromName(manip->GetName(), robot);
   pci.rad->SetDOFValues(util::toDblVec(initialState));
 
   sensor_msgs::JointState js;
@@ -114,7 +128,41 @@ bool TrajoptInterfaceROS::solve(const planning_scene::PlanningSceneConstPtr& pla
     mdJoints++;
     frameIds++;
   }
+
+  // Set up planning problem
+
+  trajopt::InitInfo initinfo;
+  initinfo.type = trajopt::InitInfo::STATIONARY;
+  boost::shared_ptr<trajopt::JointVelCostInfo> jvci(new trajopt::JointVelCostInfo());
+  jvci->coeffs = trajopt::DblVec(numJoints, 1); //TODO: Make configurable
+  jvci->name = "jvel0";
+
+  boost::shared_ptr<trajopt::CollisionCostInfo> cci(new trajopt::CollisionCostInfo());
+  cci->coeffs = trajopt::DblVec(numSteps, 20);
+  cci->dist_pen = trajopt::DblVec(numSteps, 0.025);
+  cci->name = "collision0";
+
+  boost::shared_ptr<trajopt::JointConstraintInfo> jci(new trajopt::JointConstraintInfo());
+  jci->vals = util::toDblVec(goalState);
+  jci->timestep = numSteps - 1;
+  jci->name = "joint0";
+
+  pci.basic_info.n_steps = numSteps;
+  pci.basic_info.manip = manip->GetName();
+  pci.basic_info.start_fixed = true;
+
+  pci.init_info = initinfo;
+  pci.cost_infos.push_back(jvci);
+  pci.cost_infos.push_back(cci);
+  pci.cnt_infos.push_back(jci);
+
+  trajopt::TrajOptProbPtr prob = trajopt::ConstructProblem(pci);
+  
+  ipi::sco::BasicTrustRegionSQP opt(prob);
+
   // optimize!
+
+  // TODO: Why is this here?
   kinematic_state::KinematicState start_state(planning_scene->getCurrentState());
   kinematic_state::robotStateToKinematicState(*planning_scene->getTransforms(), req.motion_plan_request.start_state, start_state);
   ros::WallTime create_time = ros::WallTime::now();
@@ -128,11 +176,8 @@ bool TrajoptInterfaceROS::solve(const planning_scene::PlanningSceneConstPtr& pla
 
   ROS_INFO("Optimization took %f sec to create", (ros::WallTime::now() - create_time).toSec());  
 
-  OpenRAVE::RobotBase::ManipulatorPtr manip = getManipulatorFromGroup(robot, model_group);
   
-  //setupArmToJointTarget(opt, goalState, rro->createManipulator(manip->GetName(), false));
-  //setEndFixed(opt);
-  //trajOuterOpt(opt, AllowedCollisions());
+  opt.optimize();
   ROS_INFO("Optimization actually took %f sec to run", (ros::WallTime::now() - create_time).toSec());
 
   create_time = ros::WallTime::now();

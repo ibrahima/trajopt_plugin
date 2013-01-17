@@ -1,0 +1,5 @@
+<launch>
+
+  <include file="$(find pr2_moveit_config)/launch/moveit_rviz.launch"/>
+
+</launch>

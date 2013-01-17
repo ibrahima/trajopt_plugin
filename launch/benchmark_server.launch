@@ -1,0 +1,17 @@
+<launch>
+
+  <node name="moveit_benchmark_server" pkg="moveit_ros_benchmarks" type="moveit_run_benchmark" respawn="false" output="screen">
+    <rosparam command="load" file="$(find pr2_moveit_config)/config/ompl_planning.yaml"/>
+    <rosparam command="load" file="$(find pr2_moveit_config)/config/ompl_planning.yaml"/>
+    <!-- Any parameter needed by planning plugins needs to be loaded here (usually .yaml files) -->
+  </node>
+  
+  <!-- Or, if the parameters are are in their own launch files, they can be loaded here: -->
+
+  <!--
+  /opt/ros/groovy/stacks/pr2_mechanism/pr2_mechanism_model/pr2.urdf
+  <include ns="moveit_benchmark_server" file="$(find FOO)/launch/BAR.launch">
+  </include>
+  -->
+
+</launch>

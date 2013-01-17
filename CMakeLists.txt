@@ -77,14 +77,23 @@ include_directories(include
 # )
 
 ## Declare a cpp executable
-add_executable(test_traj src/test_traj.cpp)
-target_link_libraries(test_traj ${catkin_LIBRARIES} trajopt)
 
 set(MOVEIT_LIB_NAME moveit_trajopt_interface_ros)
 
 add_library(${MOVEIT_LIB_NAME} src/trajopt_interface_ros.cpp src/ros_rave_conversions.cpp)
 target_link_libraries(${MOVEIT_LIB_NAME}
   ${catkin_LIBRARIES}
+  trajopt
+  ${OpenRAVE_LIBRARIES}
+  ${OpenRAVE_CORE_LIBRARIES}
+  )
+
+add_library(moveit_trajopt_planner_plugin src/trajopt_plugin.cpp)
+target_link_libraries(moveit_trajopt_planner_plugin
+  ${MOVEIT_LIB_NAME}
+  ${catkin_LIBRARIES}
+  ${OpenRAVE_LIBRARIES}
+  ${OpenRAVE_CORE_LIBRARIES}
   trajopt
   )
 
