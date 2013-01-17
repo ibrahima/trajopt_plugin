@@ -120,6 +120,11 @@ bool TrajoptInterfaceROS::solve(const planning_scene::PlanningSceneConstPtr& pla
   trajopt::InitInfo initinfo;
   initinfo.type = trajopt::InitInfo::STATIONARY;
   initinfo.data = util::toVectorXd(rad->GetDOFValues()).transpose().replicate(numSteps, 1);
+
+  // Linearly interpolate in joint space
+  for(int k=0; k<numJoints; k++){
+    initinfo.data.col(k) = Eigen::VectorXd::LinSpaced(numSteps, initialState(k), goalState(k));
+  }
   ROS_INFO("Init Traj dimensions: %d x %d", initinfo.data.rows(), initinfo.data.cols());
   
   boost::shared_ptr<trajopt::JointVelCostInfo> jvci(new trajopt::JointVelCostInfo());
