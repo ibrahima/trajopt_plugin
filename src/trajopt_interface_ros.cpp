@@ -8,6 +8,7 @@
 #include <trajopt_interface_ros/ros_rave_conversions.h>
 #include <trajopt/rave_utils.hpp>
 #include <utils/eigen_conversions.hpp>
+#include <trajopt/plot_callback.hpp>
 
 #include <iostream>
 
@@ -175,7 +176,7 @@ bool TrajoptInterfaceROS::solve(const planning_scene::PlanningSceneConstPtr& pla
 
   // Why does this not happen in the constructor?
   opt.initialize(trajopt::trajToDblVec(prob->GetInitTraj()));
-  
+  opt.addCallback(trajopt::PlotCallback(*prob));
   opt.optimize();
   ROS_INFO("Optimization actually took %f sec to run", (ros::WallTime::now() - create_time).toSec());
 
