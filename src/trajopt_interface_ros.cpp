@@ -12,6 +12,7 @@
 
 #include <iostream>
 
+using namespace std;
 namespace trajopt_interface_ros
 {
 
@@ -70,7 +71,7 @@ bool TrajoptInterfaceROS::solve(const planning_scene::PlanningSceneConstPtr& pla
                     req.motion_plan_request.group_name,
                     initialState);
   // LOG_INFO("Got initial joint states as array");
-  std::cout << initialState << std::endl;
+  cout << initialState << endl;
 
   trajopt::RobotAndDOFPtr rad(new trajopt::RobotAndDOF(robot, manip->GetArmIndices(), 0, OpenRAVE::Vector(0,0,1)));
   pci.rad = rad; // trajopt::RADFromName(manip->GetName(), robot);
@@ -97,14 +98,14 @@ bool TrajoptInterfaceROS::solve(const planning_scene::PlanningSceneConstPtr& pla
                     req.motion_plan_request.group_name, 
                     goalState);
   // LOG_INFO ("Got Goal state");
-  std::cout << goalState << std::endl;
+  cout << goalState << endl;
 
   // Handle multi DOF joint start state (base)
   moveit_msgs::MultiDOFJointState multiDofJoints = req.motion_plan_request.start_state.multi_dof_joint_state;
-  std::vector<geometry_msgs::Pose> poses = multiDofJoints.poses;
-  std::vector<std::string>::iterator mdJoints = multiDofJoints.joint_names.begin();
-  std::vector<geometry_msgs::Pose>::iterator posit = poses.begin();
-  std::vector<std::string>::iterator frameIds = multiDofJoints.frame_ids.begin();
+  vector<geometry_msgs::Pose> poses = multiDofJoints.poses;
+  vector<string>::iterator mdJoints = multiDofJoints.joint_names.begin();
+  vector<geometry_msgs::Pose>::iterator posit = poses.begin();
+  vector<string>::iterator frameIds = multiDofJoints.frame_ids.begin();
   while(mdJoints != multiDofJoints.joint_names.end()){
     // LOG_DEBUG("Multi DOF Joint: " << *mdJoints << " in frame " << *frameIds);
     if(*mdJoints == "world_joint"){ // world_joint represents the offset from odom_combined to base_footprint
