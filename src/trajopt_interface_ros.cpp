@@ -23,11 +23,13 @@ TrajoptInterfaceROS::TrajoptInterfaceROS(const kinematic_model::KinematicModelCo
   // Load the PR2 by default
   penv->Load("robots/pr2-beta-static.zae") ;
   robot = trajopt::GetRobot(*penv);
-
-  viewer.reset(new OSGViewer(penv));
-  viewer->UpdateSceneData();
-  penv->AddViewer(viewer);
-
+  bool enableViewer = false;
+  nh_.param("enable_viewer", enableViewer, false);
+  if(enableViewer){
+    viewer.reset(new OSGViewer(penv));
+    viewer->UpdateSceneData();
+    penv->AddViewer(viewer);
+  }
   loadParams();
 }
 
@@ -54,7 +56,8 @@ bool TrajoptInterfaceROS::solve(const planning_scene::PlanningSceneConstPtr& pla
   const kinematic_model::JointModelGroup* model_group = 
     planning_scene->getKinematicModel()->getJointModelGroup(req.motion_plan_request.group_name);
 
-  OpenRAVE::RobotBase::ManipulatorPtr manip = getManipulatorFromGroup(robot, model_group);  
+  OpenRAVE::RobotBase::ManipulatorPtr manip = getManipulatorFromGroup(robot, model_group);
+
   int numJoints = model_group->getJointModels().size();
   int numSteps = 10; // TODO: Configurable
 
@@ -181,7 +184,10 @@ bool TrajoptInterfaceROS::solve(const planning_scene::PlanningSceneConstPtr& pla
 
   // Why does this not happen in the constructor?
   opt.initialize(trajopt::trajToDblVec(prob->GetInitTraj()));
-  opt.addCallback(trajopt::PlotCallback(*prob));
+  if(viewer){
+    opt.addCallback(trajopt::PlotCallback(*prob));
+  }
+
   opt.optimize();
   ROS_INFO("Optimization actually took %f sec to run", (ros::WallTime::now() - create_time).toSec());
 
