@@ -50,26 +50,12 @@ bool TrajoptInterfaceROS::solve(const planning_scene::PlanningSceneConstPtr& pla
 
   trajopt::ProblemConstructionInfo pci(penv);
 
-  pci.init_info.type = trajopt::InitInfo::STATIONARY; // TODO: Make this a param
-
-
   const kinematic_model::JointModelGroup* model_group = 
     planning_scene->getKinematicModel()->getJointModelGroup(req.motion_plan_request.group_name);
 
   OpenRAVE::RobotBase::ManipulatorPtr manip = getManipulatorFromGroup(robot, model_group);  
   int numJoints = model_group->getJointModels().size();
   int numSteps = 10; // TODO: Configurable
-  // Json::Value conf;
-  // conf["basic_info"] = Json::Value();
-  // conf["basic_info"]["manip"] = manip->GetName();
-  // conf["basic_info"]["start_fixed"] = true;
-  
-  // conf["costs"] = Json::Value();
-  // Json::Value joint_vel_cost;
-  // joint_vel_cost["type"]="joint_vel";
-  // joint_vel_cost["name"]="jvel0";
-  // joint_vel_cost["params"]["coeffs"] = 1;
-  // conf["costs"].append(joint_vel_cost);
 
   Eigen::VectorXd initialState(numJoints);
   Eigen::VectorXd goalState(numJoints);
@@ -81,6 +67,7 @@ bool TrajoptInterfaceROS::solve(const planning_scene::PlanningSceneConstPtr& pla
                     initialState);
   // LOG_INFO("Got initial joint states as array");
   std::cout << initialState << std::endl;
+
   trajopt::RobotAndDOFPtr rad(new trajopt::RobotAndDOF(robot, manip->GetArmIndices(), 0, OpenRAVE::Vector(0,0,1)));
   pci.rad = rad; // trajopt::RADFromName(manip->GetName(), robot);
   pci.rad->SetDOFValues(util::toDblVec(initialState));
@@ -98,8 +85,6 @@ bool TrajoptInterfaceROS::solve(const planning_scene::PlanningSceneConstPtr& pla
   // LOG_INFO("Gathered goal joint state");
 
 
-  // Note: May need to check req.mpr.start_state.multi_dof_joint_state for base transform and others
-  // TODO: This function is broken
   setRaveRobotState(robot, req.motion_plan_request.start_state.joint_state);
   // LOG_INFO("Set RAVE Robot State");
   // Get the goal state
@@ -133,6 +118,9 @@ bool TrajoptInterfaceROS::solve(const planning_scene::PlanningSceneConstPtr& pla
 
   trajopt::InitInfo initinfo;
   initinfo.type = trajopt::InitInfo::STATIONARY;
+  initinfo.data = util::toVectorXd(rad->GetDOFValues()).transpose().replicate(numSteps, 1);
+  ROS_INFO("Init Traj dimensions: %d x %d", initinfo.data.rows(), initinfo.data.cols());
+  
   boost::shared_ptr<trajopt::JointVelCostInfo> jvci(new trajopt::JointVelCostInfo());
   jvci->coeffs = trajopt::DblVec(numJoints, 1); //TODO: Make configurable
   jvci->name = "jvel0";
@@ -156,15 +144,24 @@ bool TrajoptInterfaceROS::solve(const planning_scene::PlanningSceneConstPtr& pla
   pci.cost_infos.push_back(cci);
   pci.cnt_infos.push_back(jci);
 
-  trajopt::TrajOptProbPtr prob = trajopt::ConstructProblem(pci);
+  // Json::Value conf;
+  // conf["basic_info"] = Json::Value();
+  // conf["basic_info"]["manip"] = manip->GetName();
+  // conf["basic_info"]["start_fixed"] = true;
   
+  // conf["costs"] = Json::Value();
+  // Json::Value joint_vel_cost;
+  // joint_vel_cost["type"]="joint_vel";
+  // joint_vel_cost["name"]="jvel0";
+  // joint_vel_cost["params"]["coeffs"] = 1;
+  // conf["costs"].append(joint_vel_cost);
+
+  trajopt::TrajOptProbPtr prob = trajopt::ConstructProblem(pci);
+
+  ROS_INFO("Problem has %d steps and %d dofs", prob->GetNumSteps(), prob->GetNumDOF());
   ipi::sco::BasicTrustRegionSQP opt(prob);
 
   // optimize!
-
-  // TODO: Why is this here?
-  kinematic_state::KinematicState start_state(planning_scene->getCurrentState());
-  kinematic_state::robotStateToKinematicState(*planning_scene->getTransforms(), req.motion_plan_request.start_state, start_state);
   ros::WallTime create_time = ros::WallTime::now();
   // LOG_INFO("Gathered start and goal states");
 
@@ -174,8 +171,10 @@ bool TrajoptInterfaceROS::solve(const planning_scene::PlanningSceneConstPtr& pla
   importCollisionWorld(penv, planning_scene->getCollisionWorld());
   // LOG_INFO("Imported collision world");
 
-  ROS_INFO("Optimization took %f sec to create", (ros::WallTime::now() - create_time).toSec());  
+  ROS_INFO("Optimization took %f sec to create", (ros::WallTime::now() - create_time).toSec());
 
+  // Why does this not happen in the constructor?
+  opt.initialize(trajopt::trajToDblVec(prob->GetInitTraj()));
   
   opt.optimize();
   ROS_INFO("Optimization actually took %f sec to run", (ros::WallTime::now() - create_time).toSec());
