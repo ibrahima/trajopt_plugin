@@ -91,9 +91,13 @@ vector<OpenRAVE::KinBodyPtr> importCollisionWorld(OpenRAVE::EnvironmentBasePtr e
   for(int i = 0; i < objectIds.size(); i++){
     ROS_INFO("Importing world object %d of %d", i+1, objectIds.size());
     collision_detection::CollisionWorld::ObjectConstPtr obj = world->getObject(objectIds[i]);
+    if(!obj){
+      ROS_WARN("Found a null object, skipping it");
+      continue;
+    }
 	OpenRAVE::KinBodyPtr body = moveitObjectToKinBody(obj, env);
     importedBodies.push_back(body);
-    // I think this is necessary, not 100% sure
+
     env->Add(body);
   }
   return importedBodies;

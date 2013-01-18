@@ -1,8 +1,10 @@
+#include <openrave-core.h>
+#include <Eigen/Core>
 #include <trajopt/common.hpp>
 #include <ipi/sco/optimizers.hpp>
 #include <trajopt_interface_ros/trajopt_interface_ros.h>
 #include <moveit/kinematic_state/conversions.h>
-#include <Eigen/Core>
+
 
 #include <Eigen/Dense>
 #include <trajopt_interface_ros/ros_rave_conversions.h>
@@ -20,6 +22,7 @@ namespace trajopt_interface_ros
 TrajoptInterfaceROS::TrajoptInterfaceROS(const kinematic_model::KinematicModelConstPtr& kmodel) :
   kmodel(kmodel), nh_("~") 
 {
+  OpenRAVE::RaveInitialize();
   penv = OpenRAVE::RaveCreateEnvironment();
   penv->StopSimulation();
   // Load the PR2 by default
@@ -170,7 +173,9 @@ bool TrajoptInterfaceROS::solve(const planning_scene::PlanningSceneConstPtr& pla
 
   // Why does this not happen in the constructor?
   opt.initialize(trajopt::trajToDblVec(prob->GetInitTraj()));
+  ROS_INFO("Gave optimization initial trajectory");
   if(viewer){
+    ROS_INFO("Viewer enabled");
     opt.addCallback(trajopt::PlotCallback(*prob));
   }
 
@@ -219,6 +224,9 @@ bool TrajoptInterfaceROS::solve(const planning_scene::PlanningSceneConstPtr& pla
   // TODO: Do this somewhere else or do something faster like clone and trash the environment when done?
   BOOST_FOREACH(OpenRAVE::KinBodyPtr body, importedBodies){
     penv->Remove(body);
+    ROS_INFO("Removed %s from OpenRAVE", body->GetName().c_str());
+    body->Destroy();
+    body.reset();
   }
   return true;
 }
