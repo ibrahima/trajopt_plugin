@@ -11,6 +11,7 @@
 #include <trajopt/plot_callback.hpp>
 #include <boost/foreach.hpp>
 #include <iostream>
+#include <moveit/constraint_samplers/constraint_sampler_manager.h>
 
 using namespace std;
 namespace trajopt_interface_ros
@@ -97,8 +98,6 @@ bool TrajoptInterfaceROS::solve(const planning_scene::PlanningSceneConstPtr& pla
                     js, 
                     req.motion_plan_request.group_name, 
                     goalState);
-  // LOG_INFO ("Got Goal state");
-  cout << goalState << endl;
 
   // Handle multi DOF joint start state (base)
   moveit_msgs::MultiDOFJointState multiDofJoints = req.motion_plan_request.start_state.multi_dof_joint_state;
@@ -119,8 +118,22 @@ bool TrajoptInterfaceROS::solve(const planning_scene::PlanningSceneConstPtr& pla
     frameIds++;
   }
 
-  // Set up planning problem
+  // Sample the goal constraints to get a joint state
+  kinematic_state::KinematicStatePtr ksp(new kinematic_state::KinematicState(planning_scene->getCurrentState()));
+  constraint_samplers::ConstraintSamplerPtr csp = constraint_samplers::ConstraintSamplerManager::selectDefaultSampler(planning_scene, req.motion_plan_request.group_name, req.motion_plan_request.goal_constraints[0]);
 
+  kinematic_state::JointStateGroup *jsg = ksp->getJointStateGroup(req.motion_plan_request.group_name);
+  csp->sample(jsg, *ksp);
+  vector<double> sampled_vals;
+  jsg->getVariableValues(sampled_vals);
+  ROS_INFO("Sampled joint values");
+  BOOST_FOREACH(double d, sampled_vals){
+    ROS_INFO("--- %f\n", d);
+  }
+  
+  ///////////////////////////////////////////////////////
+  ///// Set up planning problem
+  ///////////////////////////////////////////////////////
   trajopt::InitInfo initinfo;
   initinfo.type = trajopt::InitInfo::STATIONARY;
   initinfo.data = util::toVectorXd(rad->GetDOFValues()).transpose().replicate(numSteps, 1);
