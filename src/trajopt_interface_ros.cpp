@@ -78,27 +78,42 @@ bool TrajoptInterfaceROS::solve(const planning_scene::PlanningSceneConstPtr& pla
   pci.rad = rad; // trajopt::RADFromName(manip->GetName(), robot);
   pci.rad->SetDOFValues(util::toDblVec(initialState));
 
-  sensor_msgs::JointState js;
-  
-  // Gathers the goal joint constraints into a JointState object
-  // TODO: Handle all constraints, not just first joint constraints
-  // TODO: Refactor, this is ugly
-  for(unsigned int i = 0; i < req.motion_plan_request.goal_constraints[0].joint_constraints.size(); i++) {
-    js.name.push_back(req.motion_plan_request.goal_constraints[0].joint_constraints[i].joint_name);
-    js.position.push_back(req.motion_plan_request.goal_constraints[0].joint_constraints[i].position);
-  }
 
-  // LOG_INFO("Gathered goal joint state");
+  // Sample the goal constraints to get a joint state
+  kinematic_state::KinematicStatePtr ksp(new kinematic_state::KinematicState(planning_scene->getCurrentState()));
+  constraint_samplers::ConstraintSamplerPtr csp = constraint_samplers::ConstraintSamplerManager::selectDefaultSampler(planning_scene, req.motion_plan_request.group_name, req.motion_plan_request.goal_constraints[0]);
+
+  kinematic_state::JointStateGroup *jsg = ksp->getJointStateGroup(req.motion_plan_request.group_name);
+  csp->sample(jsg, *ksp);
+  vector<double> sampled_vals;
+  jsg->getVariableValues(sampled_vals);
+  ROS_INFO("Sampled joint values");
+  // BOOST_FOREACH(double d, sampled_vals){
+  //   ROS_INFO("--- %f\n", d);
+  // }
+  goalState = util::toVectorXd(sampled_vals);
+
+  // sensor_msgs::JointState js;
+  
+  // // Gathers the goal joint constraints into a JointState object
+  // // TODO: Handle all constraints, not just first joint constraints
+  // // TODO: Refactor, this is ugly
+  // for(unsigned int i = 0; i < req.motion_plan_request.goal_constraints[0].joint_constraints.size(); i++) {
+  //   js.name.push_back(req.motion_plan_request.goal_constraints[0].joint_constraints[i].joint_name);
+  //   js.position.push_back(req.motion_plan_request.goal_constraints[0].joint_constraints[i].position);
+  // }
+
+  // // LOG_INFO("Gathered goal joint state");
+  // // Get the goal state
+  // jointStateToArray(planning_scene->getKinematicModel(),
+  //                   js, 
+  //                   req.motion_plan_request.group_name, 
+  //                   goalState);
+
 
 
   setRaveRobotState(robot, req.motion_plan_request.start_state.joint_state);
   // LOG_INFO("Set RAVE Robot State");
-  // Get the goal state
-  jointStateToArray(planning_scene->getKinematicModel(),
-                    js, 
-                    req.motion_plan_request.group_name, 
-                    goalState);
-
   // Handle multi DOF joint start state (base)
   moveit_msgs::MultiDOFJointState multiDofJoints = req.motion_plan_request.start_state.multi_dof_joint_state;
   vector<geometry_msgs::Pose> poses = multiDofJoints.poses;
@@ -118,18 +133,6 @@ bool TrajoptInterfaceROS::solve(const planning_scene::PlanningSceneConstPtr& pla
     frameIds++;
   }
 
-  // Sample the goal constraints to get a joint state
-  kinematic_state::KinematicStatePtr ksp(new kinematic_state::KinematicState(planning_scene->getCurrentState()));
-  constraint_samplers::ConstraintSamplerPtr csp = constraint_samplers::ConstraintSamplerManager::selectDefaultSampler(planning_scene, req.motion_plan_request.group_name, req.motion_plan_request.goal_constraints[0]);
-
-  kinematic_state::JointStateGroup *jsg = ksp->getJointStateGroup(req.motion_plan_request.group_name);
-  csp->sample(jsg, *ksp);
-  vector<double> sampled_vals;
-  jsg->getVariableValues(sampled_vals);
-  ROS_INFO("Sampled joint values");
-  BOOST_FOREACH(double d, sampled_vals){
-    ROS_INFO("--- %f\n", d);
-  }
   
   ///////////////////////////////////////////////////////
   ///// Set up planning problem
