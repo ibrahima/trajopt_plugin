@@ -93,23 +93,6 @@ bool TrajoptInterfaceROS::solve(const planning_scene::PlanningSceneConstPtr& pla
   // }
   goalState = util::toVectorXd(sampled_vals);
 
-  // sensor_msgs::JointState js;
-  
-  // // Gathers the goal joint constraints into a JointState object
-  // // TODO: Handle all constraints, not just first joint constraints
-  // // TODO: Refactor, this is ugly
-  // for(unsigned int i = 0; i < req.motion_plan_request.goal_constraints[0].joint_constraints.size(); i++) {
-  //   js.name.push_back(req.motion_plan_request.goal_constraints[0].joint_constraints[i].joint_name);
-  //   js.position.push_back(req.motion_plan_request.goal_constraints[0].joint_constraints[i].position);
-  // }
-
-  // // LOG_INFO("Gathered goal joint state");
-  // // Get the goal state
-  // jointStateToArray(planning_scene->getKinematicModel(),
-  //                   js, 
-  //                   req.motion_plan_request.group_name, 
-  //                   goalState);
-
 
 
   setRaveRobotState(robot, req.motion_plan_request.start_state.joint_state);
@@ -170,18 +153,6 @@ bool TrajoptInterfaceROS::solve(const planning_scene::PlanningSceneConstPtr& pla
   pci.cost_infos.push_back(cci);
   pci.cnt_infos.push_back(jci);
 
-  // Json::Value conf;
-  // conf["basic_info"] = Json::Value();
-  // conf["basic_info"]["manip"] = manip->GetName();
-  // conf["basic_info"]["start_fixed"] = true;
-  
-  // conf["costs"] = Json::Value();
-  // Json::Value joint_vel_cost;
-  // joint_vel_cost["type"]="joint_vel";
-  // joint_vel_cost["name"]="jvel0";
-  // joint_vel_cost["params"]["coeffs"] = 1;
-  // conf["costs"].append(joint_vel_cost);
-
   trajopt::TrajOptProbPtr prob = trajopt::ConstructProblem(pci);
 
   ROS_INFO("Problem has %d steps and %d dofs", prob->GetNumSteps(), prob->GetNumDOF());
@@ -191,8 +162,6 @@ bool TrajoptInterfaceROS::solve(const planning_scene::PlanningSceneConstPtr& pla
   ros::WallTime create_time = ros::WallTime::now();
   // LOG_INFO("Gathered start and goal states");
 
-  // Create OpenRAVE world
-  // Got a rave and a bullet instance
   // Copy planning scene obstacles into OpenRAVE world
   vector<OpenRAVE::KinBodyPtr> importedBodies = importCollisionWorld(penv, planning_scene->getCollisionWorld());
   // LOG_INFO("Imported collision world");
@@ -211,7 +180,6 @@ bool TrajoptInterfaceROS::solve(const planning_scene::PlanningSceneConstPtr& pla
   create_time = ros::WallTime::now();
 
   // assume that the trajectory is now optimized, fill in the output structure:
-  // LOG_WARN("Final Trajectory");
 
   trajopt::TrajArray finalTraj = trajopt::getTraj(opt.x(), prob->GetVars());
   // fill in joint names:
