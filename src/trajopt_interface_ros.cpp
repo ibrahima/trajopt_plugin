@@ -28,13 +28,13 @@ TrajoptInterfaceROS::TrajoptInterfaceROS(const kinematic_model::KinematicModelCo
   // Load the PR2 by default
   penv->Load("robots/pr2-beta-static.zae") ;
   robot = trajopt::GetRobot(*penv);
-  bool enableViewer = false;
+  
   nh_.param("enable_viewer", enableViewer, false);
-  if(enableViewer){
-    viewer.reset(new OSGViewer(penv));
-    viewer->UpdateSceneData();
-    penv->AddViewer(viewer);
-  }
+  // if(enableViewer){
+  //   viewer.reset(new OSGViewer(penv));
+  //   viewer->UpdateSceneData();
+  //   penv->AddViewer(viewer);
+  // }
   loadParams();
 }
 
@@ -57,6 +57,7 @@ bool TrajoptInterfaceROS::solve(const planning_scene::PlanningSceneConstPtr& pla
   ros::WallTime start_time = ros::WallTime::now();
 
   OpenRAVE::EnvironmentBasePtr myEnv = penv->CloneSelf(OpenRAVE::Clone_Bodies);
+  OSGViewerPtr myViewer;
 
   OpenRAVE::RobotBasePtr checkrobot = trajopt::GetRobot(*myEnv);
   assert(checkrobot);
@@ -171,6 +172,13 @@ bool TrajoptInterfaceROS::solve(const planning_scene::PlanningSceneConstPtr& pla
 
   // Copy planning scene obstacles into OpenRAVE world
   vector<OpenRAVE::KinBodyPtr> importedBodies = importCollisionWorld(myEnv, planning_scene->getCollisionWorld());
+
+  if(enableViewer){
+    myViewer.reset(new OSGViewer(myEnv));
+    myViewer->UpdateSceneData();
+    myEnv->AddViewer(myViewer);
+  }
+
   // LOG_INFO("Imported collision world");
 
   ROS_INFO("Optimization took %f sec to create", (ros::WallTime::now() - create_time).toSec());
@@ -178,7 +186,7 @@ bool TrajoptInterfaceROS::solve(const planning_scene::PlanningSceneConstPtr& pla
   // Why does this not happen in the constructor?
   opt.initialize(trajopt::trajToDblVec(prob->GetInitTraj()));
   ROS_INFO("Gave optimization initial trajectory");
-  if(viewer){
+  if(enableViewer){
     ROS_INFO("Viewer enabled");
     opt.addCallback(trajopt::PlotCallback(*prob));
   }
@@ -233,6 +241,9 @@ bool TrajoptInterfaceROS::solve(const planning_scene::PlanningSceneConstPtr& pla
   //   body->Destroy();
   //   body.reset();
   // }
+  if(enableViewer){
+    myViewer.reset();
+  }
   return true;
 }
 

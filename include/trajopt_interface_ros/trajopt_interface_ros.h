@@ -30,6 +30,7 @@ protected:
   OpenRAVE::EnvironmentBasePtr penv;
   OpenRAVE::RobotBasePtr robot;
   OSGViewerPtr viewer;
+  bool enableViewer = false;
 };
 
 }
