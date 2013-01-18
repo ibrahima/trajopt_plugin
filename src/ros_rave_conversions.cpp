@@ -75,18 +75,19 @@ OpenRAVE::KinBodyPtr moveitObjectToKinBody(collision_detection::CollisionWorld::
   return body;
 }
 
-void importCollisionWorld(OpenRAVE::EnvironmentBasePtr env, const collision_detection::CollisionWorldConstPtr world){
-  std::vector<string> objectIds = world->getObjectIds();
-  // LOG_DEBUG("Importing ROS collision world");
-  // LOG_DEBUG_FMT("World contains %d objects", world->getObjectsCount());
+vector<OpenRAVE::KinBodyPtr> importCollisionWorld(OpenRAVE::EnvironmentBasePtr env, const collision_detection::CollisionWorldConstPtr world){
+  vector<OpenRAVE::KinBodyPtr> importedBodies;
+  vector<string> objectIds = world->getObjectIds();
+  // ROS_INFO("Importing ROS collision world with %d objects", world->getObjectsCount());
   for(int i = 0; i < objectIds.size(); i++){
     // LOG_DEBUG_FMT("Importing world object %d of %d", i+1, objectIds.size());
     collision_detection::CollisionWorld::ObjectConstPtr obj = world->getObject(objectIds[i]);
 	OpenRAVE::KinBodyPtr body = moveitObjectToKinBody(obj, env);
+    importedBodies.push_back(body);
     // I think this is necessary, not 100% sure
     env->Add(body);
-
   }
+  return importedBodies;
 }
 
 bool setRaveRobotState(OpenRAVE::RobotBasePtr robot, sensor_msgs::JointState js){
