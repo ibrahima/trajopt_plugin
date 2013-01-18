@@ -28,8 +28,8 @@ protected:
   ros::NodeHandle nh_; /// The ROS node handle
   kinematic_model::KinematicModelConstPtr kmodel;
   OpenRAVE::EnvironmentBasePtr penv;
-  OpenRAVE::RobotBasePtr robot;
-  OSGViewerPtr viewer;
+  // OpenRAVE::RobotBasePtr robot;
+  // OSGViewerPtr viewer;
   bool enableViewer = false;
 };
 

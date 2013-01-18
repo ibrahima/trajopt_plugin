@@ -27,7 +27,7 @@ TrajoptInterfaceROS::TrajoptInterfaceROS(const kinematic_model::KinematicModelCo
   penv->StopSimulation();
   // Load the PR2 by default
   penv->Load("robots/pr2-beta-static.zae") ;
-  robot = trajopt::GetRobot(*penv);
+  // robot = trajopt::GetRobot(*penv);
   
   nh_.param("enable_viewer", enableViewer, false);
   // if(enableViewer){
@@ -40,7 +40,7 @@ TrajoptInterfaceROS::TrajoptInterfaceROS(const kinematic_model::KinematicModelCo
 
 TrajoptInterfaceROS::~TrajoptInterfaceROS()
 {
-  viewer.reset();
+  // viewer.reset();
   penv.reset();
   OpenRAVE::RaveDestroy();
 }
@@ -58,15 +58,14 @@ bool TrajoptInterfaceROS::solve(const planning_scene::PlanningSceneConstPtr& pla
 
   OpenRAVE::EnvironmentBasePtr myEnv = penv->CloneSelf(OpenRAVE::Clone_Bodies);
   OSGViewerPtr myViewer;
-
-  OpenRAVE::RobotBasePtr checkrobot = trajopt::GetRobot(*myEnv);
-  assert(checkrobot);
+  OpenRAVE::RobotBasePtr myRobot = trajopt::GetRobot(*myEnv);
+  assert(myRobot);
   trajopt::ProblemConstructionInfo pci(myEnv);
 
   const kinematic_model::JointModelGroup* model_group = 
     planning_scene->getKinematicModel()->getJointModelGroup(req.motion_plan_request.group_name);
 
-  OpenRAVE::RobotBase::ManipulatorPtr manip = getManipulatorFromGroup(robot, model_group);
+  OpenRAVE::RobotBase::ManipulatorPtr manip = getManipulatorFromGroup(myRobot, model_group);
 
   int numJoints = model_group->getJointModels().size();
   int numSteps = 10; // TODO: Configurable
@@ -82,8 +81,8 @@ bool TrajoptInterfaceROS::solve(const planning_scene::PlanningSceneConstPtr& pla
   // LOG_INFO("Got initial joint states as array");
   cout << initialState << endl;
 
-  trajopt::RobotAndDOFPtr rad(new trajopt::RobotAndDOF(robot, manip->GetArmIndices(), 0, OpenRAVE::Vector(0,0,1)));
-  pci.rad = rad; // trajopt::RADFromName(manip->GetName(), robot);
+  trajopt::RobotAndDOFPtr rad(new trajopt::RobotAndDOF(myRobot, manip->GetArmIndices(), 0, OpenRAVE::Vector(0,0,1)));
+  pci.rad = rad; // trajopt::RADFromName(manip->GetName(), myRobot);
   pci.rad->SetDOFValues(util::toDblVec(initialState));
 
 
@@ -103,7 +102,7 @@ bool TrajoptInterfaceROS::solve(const planning_scene::PlanningSceneConstPtr& pla
 
 
 
-  setRaveRobotState(robot, req.motion_plan_request.start_state.joint_state);
+  setRaveRobotState(myRobot, req.motion_plan_request.start_state.joint_state);
   // LOG_INFO("Set RAVE Robot State");
   // Handle multi DOF joint start state (base)
   moveit_msgs::MultiDOFJointState multiDofJoints = req.motion_plan_request.start_state.multi_dof_joint_state;
@@ -117,7 +116,7 @@ bool TrajoptInterfaceROS::solve(const planning_scene::PlanningSceneConstPtr& pla
       OpenRAVE::RaveVector<double> trans(posit->position.x, posit->position.y, posit->position.z);
       OpenRAVE::RaveVector<double> rot(posit->orientation.w, posit->orientation.x, posit->orientation.y, posit->orientation.z);
       OpenRAVE::Transform t(rot, trans);
-      robot->SetTransform(t);
+      myRobot->SetTransform(t);
     }
     posit++;
     mdJoints++;
@@ -174,9 +173,8 @@ bool TrajoptInterfaceROS::solve(const planning_scene::PlanningSceneConstPtr& pla
   vector<OpenRAVE::KinBodyPtr> importedBodies = importCollisionWorld(myEnv, planning_scene->getCollisionWorld());
 
   if(enableViewer){
-    myViewer.reset(new OSGViewer(myEnv));
+    myViewer = OSGViewer::GetOrCreate(myEnv);
     myViewer->UpdateSceneData();
-    myEnv->AddViewer(myViewer);
   }
 
   // LOG_INFO("Imported collision world");
@@ -242,6 +240,7 @@ bool TrajoptInterfaceROS::solve(const planning_scene::PlanningSceneConstPtr& pla
   //   body.reset();
   // }
   if(enableViewer){
+    myEnv->Remove(myViewer);
     myViewer.reset();
   }
   return true;
