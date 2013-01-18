@@ -6,6 +6,8 @@
 #include <boost/shared_ptr.hpp>
 #include <assert.h>
 #include <string>
+#include <ros/console.h>
+#include <boost/algorithm/string.hpp>
 
 using namespace std;
 OpenRAVE::KinBodyPtr moveitObjectToKinBody(collision_detection::CollisionWorld::ObjectConstPtr object, OpenRAVE::EnvironmentBasePtr env){
@@ -68,9 +70,16 @@ OpenRAVE::KinBodyPtr moveitObjectToKinBody(collision_detection::CollisionWorld::
     }
     geometries.push_back(info);
   }
-  //TODO: Set a name for the KinBody
+
+  string name(object->id_);
+  boost::algorithm::trim(name); //OpenRAVE doesn't like leading spaces
   OpenRAVE::KinBodyPtr body = OpenRAVE::RaveCreateKinBody(env);
+  ROS_INFO("Tried to create a kinbody named %s", name.c_str());
+  assert(body);
   body->InitFromGeometries(geometries);
+  ROS_INFO("Initialized kinbody from geometry");
+  // For some strange reason, if you try to create the KinBody with a name it returns a null pointer, so set the name after creating it.
+  body->SetName(name);
   // Perhaps it should do something with the return code, if it's false?
   return body;
 }
@@ -78,9 +87,9 @@ OpenRAVE::KinBodyPtr moveitObjectToKinBody(collision_detection::CollisionWorld::
 vector<OpenRAVE::KinBodyPtr> importCollisionWorld(OpenRAVE::EnvironmentBasePtr env, const collision_detection::CollisionWorldConstPtr world){
   vector<OpenRAVE::KinBodyPtr> importedBodies;
   vector<string> objectIds = world->getObjectIds();
-  // ROS_INFO("Importing ROS collision world with %d objects", world->getObjectsCount());
+  ROS_INFO("Importing ROS collision world with %d objects", world->getObjectsCount());
   for(int i = 0; i < objectIds.size(); i++){
-    // LOG_DEBUG_FMT("Importing world object %d of %d", i+1, objectIds.size());
+    ROS_INFO("Importing world object %d of %d", i+1, objectIds.size());
     collision_detection::CollisionWorld::ObjectConstPtr obj = world->getObject(objectIds[i]);
 	OpenRAVE::KinBodyPtr body = moveitObjectToKinBody(obj, env);
     importedBodies.push_back(body);
