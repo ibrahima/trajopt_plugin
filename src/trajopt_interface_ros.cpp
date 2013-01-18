@@ -56,7 +56,11 @@ bool TrajoptInterfaceROS::solve(const planning_scene::PlanningSceneConstPtr& pla
 
   ros::WallTime start_time = ros::WallTime::now();
 
-  trajopt::ProblemConstructionInfo pci(penv);
+  OpenRAVE::EnvironmentBasePtr myEnv = penv->CloneSelf(OpenRAVE::Clone_Bodies);
+
+  OpenRAVE::RobotBasePtr checkrobot = trajopt::GetRobot(*myEnv);
+  assert(checkrobot);
+  trajopt::ProblemConstructionInfo pci(myEnv);
 
   const kinematic_model::JointModelGroup* model_group = 
     planning_scene->getKinematicModel()->getJointModelGroup(req.motion_plan_request.group_name);
@@ -166,7 +170,7 @@ bool TrajoptInterfaceROS::solve(const planning_scene::PlanningSceneConstPtr& pla
   // LOG_INFO("Gathered start and goal states");
 
   // Copy planning scene obstacles into OpenRAVE world
-  vector<OpenRAVE::KinBodyPtr> importedBodies = importCollisionWorld(penv, planning_scene->getCollisionWorld());
+  vector<OpenRAVE::KinBodyPtr> importedBodies = importCollisionWorld(myEnv, planning_scene->getCollisionWorld());
   // LOG_INFO("Imported collision world");
 
   ROS_INFO("Optimization took %f sec to create", (ros::WallTime::now() - create_time).toSec());
@@ -221,13 +225,14 @@ bool TrajoptInterfaceROS::solve(const planning_scene::PlanningSceneConstPtr& pla
   res.planning_time = ros::Duration((ros::WallTime::now() - start_time).toSec());
 
   // Remove imported bodies from OpenRAVE
+  // Since I'm cloning the environment now, this is unnecessary
   // TODO: Do this somewhere else or do something faster like clone and trash the environment when done?
-  BOOST_FOREACH(OpenRAVE::KinBodyPtr body, importedBodies){
-    penv->Remove(body);
-    ROS_INFO("Removed %s from OpenRAVE", body->GetName().c_str());
-    body->Destroy();
-    body.reset();
-  }
+  // BOOST_FOREACH(OpenRAVE::KinBodyPtr body, importedBodies){
+  //   myEnv->Remove(body);
+  //   ROS_INFO("Removed %s from OpenRAVE", body->GetName().c_str());
+  //   body->Destroy();
+  //   body.reset();
+  // }
   return true;
 }
 
