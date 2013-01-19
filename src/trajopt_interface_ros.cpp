@@ -52,8 +52,6 @@ bool TrajoptInterfaceROS::solve(const planning_scene::PlanningSceneConstPtr& pla
                          const moveit_msgs::GetMotionPlan::Request &req, 
                          moveit_msgs::GetMotionPlan::Response &res) const
 {
-
-
   ros::WallTime start_time = ros::WallTime::now();
 
   OpenRAVE::EnvironmentBasePtr myEnv = penv->CloneSelf(OpenRAVE::Clone_Bodies);
@@ -84,20 +82,20 @@ bool TrajoptInterfaceROS::solve(const planning_scene::PlanningSceneConstPtr& pla
   // Handle multi DOF joints' start state (primarily the base)
   moveit_msgs::MultiDOFJointState multiDofJoints = req.motion_plan_request.start_state.multi_dof_joint_state;
   vector<geometry_msgs::Pose> poses = multiDofJoints.poses;
-  vector<string>::iterator mdJoints = multiDofJoints.joint_names.begin();
-  vector<geometry_msgs::Pose>::iterator posit = poses.begin();
-  vector<string>::iterator frameIds = multiDofJoints.frame_ids.begin();
-  while(mdJoints != multiDofJoints.joint_names.end()){
-    // LOG_DEBUG("Multi DOF Joint: " << *mdJoints << " in frame " << *frameIds);
-    if(*mdJoints == "world_joint"){ // world_joint represents the offset from odom_combined to base_footprint
-      OpenRAVE::RaveVector<double> trans(posit->position.x, posit->position.y, posit->position.z);
-      OpenRAVE::RaveVector<double> rot(posit->orientation.w, posit->orientation.x, posit->orientation.y, posit->orientation.z);
+  vector<string> mdJoints = multiDofJoints.joint_names;
+  string worldJointFrameId, worldJointChildFrameId;
+  geometry_msgs::Pose worldJointPose;
+  for(size_t i=0; i<mdJoints.size(); i++){
+    ROS_INFO_STREAM("Multi DOF Joint: " << mdJoints[i] << " in frame " << multiDofJoints.frame_ids[i]);
+    if(mdJoints[i] == "world_joint"){ // world_joint represents the offset from odom_combined to base_footprint
+      worldJointPose = poses[i];
+      OpenRAVE::RaveVector<double> trans(poses[i].position.x, poses[i].position.y, poses[i].position.z);
+      OpenRAVE::RaveVector<double> rot(poses[i].orientation.w, poses[i].orientation.x, poses[i].orientation.y, poses[i].orientation.z);
       OpenRAVE::Transform t(rot, trans);
       myRobot->SetTransform(t);
+      worldJointFrameId = multiDofJoints.frame_ids[i];
+      worldJointChildFrameId = multiDofJoints.child_frame_ids[i];
     }
-    posit++;
-    mdJoints++;
-    frameIds++;
   }
 
   // Sample the goal constraints to get a joint state
@@ -163,7 +161,6 @@ bool TrajoptInterfaceROS::solve(const planning_scene::PlanningSceneConstPtr& pla
   vector<OpenRAVE::KinBodyPtr> importedBodies = importCollisionWorld(myEnv, planning_scene->getCollisionWorld());
   ROS_INFO("Imported collision world");
 
-
   // Why does this not happen in the constructor for opt?
   opt.initialize(trajopt::trajToDblVec(prob->GetInitTraj()));
   ROS_INFO("Gave optimization initial trajectory");
@@ -194,10 +191,25 @@ bool TrajoptInterfaceROS::solve(const planning_scene::PlanningSceneConstPtr& pla
 
   res.trajectory.joint_trajectory.header = req.motion_plan_request.start_state.joint_state.header; // @TODO this is probably a hack
 
+  // Fill in multi DOF trajectory (base)
+  // Currently hardcoded for stationary base position
+  // Eventually should write methods to convert from RobotAndDOF and trajectory
+  // array to ROS joints
+  moveit_msgs::MultiDOFJointTrajectory& mdjt = res.trajectory.multi_dof_joint_trajectory;
+  mdjt.header.frame_id = req.motion_plan_request.start_state.joint_state.header.frame_id;
+  mdjt.joint_names.clear();
+  mdjt.frame_ids.clear();
+  mdjt.child_frame_ids.clear();
+  mdjt.joint_names.push_back("world_joint");
+  mdjt.frame_ids.push_back(worldJointFrameId);
+  mdjt.child_frame_ids.push_back(worldJointChildFrameId);
+  
+
   // fill in the entire trajectory
   res.trajectory.joint_trajectory.points.resize(prob->GetNumSteps());
+  res.trajectory.multi_dof_joint_trajectory.points.resize(prob->GetNumSteps());
   for (int i=0; i < prob->GetNumSteps(); i++){
-    // TODO: Trajectory may include base or other DOFs
+    // Set single DOF joints
     res.trajectory.joint_trajectory.points[i].positions.resize(numJoints);
     for (size_t j=0; j < res.trajectory.joint_trajectory.points[i].positions.size(); j++){
       res.trajectory.joint_trajectory.points[i].positions[j] = finalTraj(i,j);
@@ -205,32 +217,26 @@ bool TrajoptInterfaceROS::solve(const planning_scene::PlanningSceneConstPtr& pla
         ROS_INFO_STREAM("Joint " << j << " " << res.trajectory.joint_trajectory.points[i].positions[j]);
       }
     }
+    // Set multi DOF joints (currently just stationary base)
+    mdjt.points[i].poses.push_back(worldJointPose);
+    
     // Setting invalid timestamps.
     // Further filtering is required to set valid timestamps accounting for velocity and acceleration constraints.
     res.trajectory.joint_trajectory.points[i].time_from_start = ros::Duration(0.0);
   }
-
-  // Fill in multi DOF trajectory (base)
-  //res.trajectory.multi_dof_joint_trajectory;
   
   ROS_INFO("Response took %f sec to create", (ros::WallTime::now() - create_time).toSec());
   ROS_INFO("Serviced planning request in %f wall-seconds, trajectory duration is %f", (ros::WallTime::now() - start_time).toSec(), res.trajectory.joint_trajectory.points[finalTraj.rows()].time_from_start.toSec());
   res.error_code.val = moveit_msgs::MoveItErrorCodes::SUCCESS;
   res.planning_time = ros::Duration((ros::WallTime::now() - start_time).toSec());
 
-  // Remove imported bodies from OpenRAVE
-  // Since I'm cloning the environment now, this is unnecessary
-  // TODO: Do this somewhere else or do something faster like clone and trash the environment when done?
-  // BOOST_FOREACH(OpenRAVE::KinBodyPtr body, importedBodies){
-  //   myEnv->Remove(body);
-  //   ROS_INFO("Removed %s from OpenRAVE", body->GetName().c_str());
-  //   body->Destroy();
-  //   body.reset();
-  // }
   if(enableViewer){
     myEnv->Remove(myViewer);
     myViewer.reset();
   }
+
+  // I assume the OpenRAVE environment and all its objects are deallocated at
+  // the end of the function; should verify that it's not leaking memory
   return true;
 }
 
