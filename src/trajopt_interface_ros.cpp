@@ -60,7 +60,6 @@ bool TrajoptInterfaceROS::solve(const planning_scene::PlanningSceneConstPtr& pla
   OSGViewerPtr myViewer;
   OpenRAVE::RobotBasePtr myRobot = trajopt::GetRobot(*myEnv);
   assert(myRobot);
-  trajopt::ProblemConstructionInfo pci(myEnv);
 
   const kinematic_model::JointModelGroup* model_group = 
     planning_scene->getKinematicModel()->getJointModelGroup(req.motion_plan_request.group_name);
@@ -72,39 +71,17 @@ bool TrajoptInterfaceROS::solve(const planning_scene::PlanningSceneConstPtr& pla
 
   Eigen::VectorXd initialState(numJoints);
   Eigen::VectorXd goalState(numJoints);
-  // // LOG_INFO_FMT("Planning for %d joints", numJoints);
+  ROS_INFO("Planning for %d joints", numJoints);
 
+  // Get the robot's initial joint state
   jointStateToArray(planning_scene->getKinematicModel(),
                     req.motion_plan_request.start_state.joint_state, 
                     req.motion_plan_request.group_name,
                     initialState);
-  // LOG_INFO("Got initial joint states as array");
-  cout << initialState << endl;
-
-  trajopt::RobotAndDOFPtr rad(new trajopt::RobotAndDOF(myRobot, manip->GetArmIndices(), 0, OpenRAVE::Vector(0,0,1)));
-  pci.rad = rad; // trajopt::RADFromName(manip->GetName(), myRobot);
-  pci.rad->SetDOFValues(util::toDblVec(initialState));
-
-
-  // Sample the goal constraints to get a joint state
-  kinematic_state::KinematicStatePtr ksp(new kinematic_state::KinematicState(planning_scene->getCurrentState()));
-  constraint_samplers::ConstraintSamplerPtr csp = constraint_samplers::ConstraintSamplerManager::selectDefaultSampler(planning_scene, req.motion_plan_request.group_name, req.motion_plan_request.goal_constraints[0]);
-
-  kinematic_state::JointStateGroup *jsg = ksp->getJointStateGroup(req.motion_plan_request.group_name);
-  csp->sample(jsg, *ksp);
-  vector<double> sampled_vals;
-  jsg->getVariableValues(sampled_vals);
-  ROS_INFO("Sampled joint values");
-  // BOOST_FOREACH(double d, sampled_vals){
-  //   ROS_INFO("--- %f\n", d);
-  // }
-  goalState = util::toVectorXd(sampled_vals);
-
-
 
   setRaveRobotState(myRobot, req.motion_plan_request.start_state.joint_state);
-  // LOG_INFO("Set RAVE Robot State");
-  // Handle multi DOF joint start state (base)
+
+  // Handle multi DOF joints' start state (primarily the base)
   moveit_msgs::MultiDOFJointState multiDofJoints = req.motion_plan_request.start_state.multi_dof_joint_state;
   vector<geometry_msgs::Pose> poses = multiDofJoints.poses;
   vector<string>::iterator mdJoints = multiDofJoints.joint_names.begin();
@@ -123,12 +100,27 @@ bool TrajoptInterfaceROS::solve(const planning_scene::PlanningSceneConstPtr& pla
     frameIds++;
   }
 
-  
+  // Sample the goal constraints to get a joint state
+  kinematic_state::KinematicStatePtr ksp(new kinematic_state::KinematicState(planning_scene->getCurrentState()));
+  constraint_samplers::ConstraintSamplerPtr csp = constraint_samplers::ConstraintSamplerManager::selectDefaultSampler(planning_scene, req.motion_plan_request.group_name, req.motion_plan_request.goal_constraints[0]);
+
+  kinematic_state::JointStateGroup *jsg = ksp->getJointStateGroup(req.motion_plan_request.group_name);
+  csp->sample(jsg, *ksp);
+  vector<double> sampled_vals;
+  jsg->getVariableValues(sampled_vals);
+  ROS_INFO("Sampled goal joint states");
+  goalState = util::toVectorXd(sampled_vals);
+
   ///////////////////////////////////////////////////////
   ///// Set up planning problem
   ///////////////////////////////////////////////////////
+  trajopt::ProblemConstructionInfo pci(myEnv);
+
+  trajopt::RobotAndDOFPtr rad(new trajopt::RobotAndDOF(myRobot, manip->GetArmIndices(), 0, OpenRAVE::Vector(0,0,1)));
+  pci.rad = rad; // trajopt::RADFromName(manip->GetName(), myRobot);  
+
   trajopt::InitInfo initinfo;
-  initinfo.type = trajopt::InitInfo::STATIONARY;
+  initinfo.type = trajopt::InitInfo::GIVEN_TRAJ;
   initinfo.data = util::toVectorXd(rad->GetDOFValues()).transpose().replicate(numSteps, 1);
 
   // Linearly interpolate in joint space
@@ -165,29 +157,25 @@ bool TrajoptInterfaceROS::solve(const planning_scene::PlanningSceneConstPtr& pla
   ROS_INFO("Problem has %d steps and %d dofs", prob->GetNumSteps(), prob->GetNumDOF());
   ipi::sco::BasicTrustRegionSQP opt(prob);
 
-  // optimize!
   ros::WallTime create_time = ros::WallTime::now();
-  // LOG_INFO("Gathered start and goal states");
 
   // Copy planning scene obstacles into OpenRAVE world
   vector<OpenRAVE::KinBodyPtr> importedBodies = importCollisionWorld(myEnv, planning_scene->getCollisionWorld());
+  ROS_INFO("Imported collision world");
 
-  if(enableViewer){
-    myViewer = OSGViewer::GetOrCreate(myEnv);
-    myViewer->UpdateSceneData();
-  }
 
-  // LOG_INFO("Imported collision world");
-
-  ROS_INFO("Optimization took %f sec to create", (ros::WallTime::now() - create_time).toSec());
-
-  // Why does this not happen in the constructor?
+  // Why does this not happen in the constructor for opt?
   opt.initialize(trajopt::trajToDblVec(prob->GetInitTraj()));
   ROS_INFO("Gave optimization initial trajectory");
+
   if(enableViewer){
     ROS_INFO("Viewer enabled");
+    myViewer = OSGViewer::GetOrCreate(myEnv);
+    myViewer->UpdateSceneData();
     opt.addCallback(trajopt::PlotCallback(*prob));
   }
+
+  ROS_INFO("Optimization took %f sec to create", (ros::WallTime::now() - create_time).toSec());
 
   opt.optimize();
   ROS_INFO("Optimization actually took %f sec to run", (ros::WallTime::now() - create_time).toSec());
