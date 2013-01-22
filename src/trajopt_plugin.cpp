@@ -20,7 +20,7 @@ public:
     trajopt_interface_.reset(new TrajoptInterfaceROS(model));
   }
 
-  bool canServiceRequest(const moveit_msgs::GetMotionPlan::Request &req) const
+  bool canServiceRequest(const moveit_msgs::MotionPlanRequest &req) const
   {
     // TODO: Actually respond with something reasonable
     //      capabilities.dummy = false;
@@ -28,17 +28,17 @@ public:
   }
 
   bool solve(const planning_scene::PlanningSceneConstPtr& planning_scene,
-             const moveit_msgs::GetMotionPlan::Request &req, 
-             moveit_msgs::GetMotionPlan::Response &res) const
+             const moveit_msgs::MotionPlanRequest &req, 
+             moveit_msgs::MotionPlanResponse &res) const
   {
     return trajopt_interface_->solve(planning_scene, req, res);
   }
 
   bool solve(const planning_scene::PlanningSceneConstPtr& planning_scene,
-             const moveit_msgs::GetMotionPlan::Request &req,
+             const moveit_msgs::MotionPlanRequest &req,
              moveit_msgs::MotionPlanDetailedResponse &res) const
   {
-    moveit_msgs::GetMotionPlan::Response res2;
+    moveit_msgs::MotionPlanResponse res2;
 
     if (trajopt_interface_->solve(planning_scene, req,res2))
     {

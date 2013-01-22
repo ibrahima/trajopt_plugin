@@ -20,7 +20,7 @@ namespace trajopt_interface_ros
 {
 
 TrajoptInterfaceROS::TrajoptInterfaceROS(const kinematic_model::KinematicModelConstPtr& kmodel) :
-  kmodel(kmodel), nh_("~") 
+  kmodel(kmodel), nh_("~"), enableViewer(false)
 {
   OpenRAVE::RaveInitialize();
   penv = OpenRAVE::RaveCreateEnvironment();
@@ -49,8 +49,8 @@ void TrajoptInterfaceROS::loadParams(void) {
 }
 
 bool TrajoptInterfaceROS::solve(const planning_scene::PlanningSceneConstPtr& planning_scene,
-                         const moveit_msgs::GetMotionPlan::Request &req, 
-                         moveit_msgs::GetMotionPlan::Response &res) const
+				const moveit_msgs::MotionPlanRequest &req, 
+                         moveit_msgs::MotionPlanResponse &res) const
 {
   ros::WallTime start_time = ros::WallTime::now();
 
@@ -60,7 +60,7 @@ bool TrajoptInterfaceROS::solve(const planning_scene::PlanningSceneConstPtr& pla
   assert(myRobot);
 
   const kinematic_model::JointModelGroup* model_group = 
-    planning_scene->getKinematicModel()->getJointModelGroup(req.motion_plan_request.group_name);
+    planning_scene->getKinematicModel()->getJointModelGroup(req.group_name);
 
   OpenRAVE::RobotBase::ManipulatorPtr manip = getManipulatorFromGroup(myRobot, model_group);
 
@@ -73,14 +73,14 @@ bool TrajoptInterfaceROS::solve(const planning_scene::PlanningSceneConstPtr& pla
 
   // Get the robot's initial joint state
   jointStateToArray(planning_scene->getKinematicModel(),
-                    req.motion_plan_request.start_state.joint_state, 
-                    req.motion_plan_request.group_name,
+                    req.start_state.joint_state, 
+                    req.group_name,
                     initialState);
 
-  setRaveRobotState(myRobot, req.motion_plan_request.start_state.joint_state);
+  setRaveRobotState(myRobot, req.start_state.joint_state);
 
   // Handle multi DOF joints' start state (primarily the base)
-  moveit_msgs::MultiDOFJointState multiDofJoints = req.motion_plan_request.start_state.multi_dof_joint_state;
+  moveit_msgs::MultiDOFJointState multiDofJoints = req.start_state.multi_dof_joint_state;
   vector<geometry_msgs::Pose> poses = multiDofJoints.poses;
   vector<string> mdJoints = multiDofJoints.joint_names;
   string worldJointFrameId, worldJointChildFrameId;
@@ -100,9 +100,9 @@ bool TrajoptInterfaceROS::solve(const planning_scene::PlanningSceneConstPtr& pla
 
   // Sample the goal constraints to get a joint state
   kinematic_state::KinematicStatePtr ksp(new kinematic_state::KinematicState(planning_scene->getCurrentState()));
-  constraint_samplers::ConstraintSamplerPtr csp = constraint_samplers::ConstraintSamplerManager::selectDefaultSampler(planning_scene, req.motion_plan_request.group_name, req.motion_plan_request.goal_constraints[0]);
+  constraint_samplers::ConstraintSamplerPtr csp = constraint_samplers::ConstraintSamplerManager::selectDefaultSampler(planning_scene, req.group_name, req.goal_constraints[0]);
 
-  kinematic_state::JointStateGroup *jsg = ksp->getJointStateGroup(req.motion_plan_request.group_name);
+  kinematic_state::JointStateGroup *jsg = ksp->getJointStateGroup(req.group_name);
   csp->sample(jsg, *ksp);
   vector<double> sampled_vals;
   jsg->getVariableValues(sampled_vals);
@@ -189,14 +189,14 @@ bool TrajoptInterfaceROS::solve(const planning_scene::PlanningSceneConstPtr& pla
     res.trajectory.joint_trajectory.joint_names[i] = model_group->getJointModels()[i]->getName();
   }
 
-  res.trajectory.joint_trajectory.header = req.motion_plan_request.start_state.joint_state.header; // @TODO this is probably a hack
+  res.trajectory.joint_trajectory.header = req.start_state.joint_state.header; // @TODO this is probably a hack
 
   // Fill in multi DOF trajectory (base)
   // Currently hardcoded for stationary base position
   // Eventually should write methods to convert from RobotAndDOF and trajectory
   // array to ROS joints
   moveit_msgs::MultiDOFJointTrajectory& mdjt = res.trajectory.multi_dof_joint_trajectory;
-  mdjt.header.frame_id = req.motion_plan_request.start_state.joint_state.header.frame_id;
+  mdjt.header.frame_id = req.start_state.joint_state.header.frame_id;
   mdjt.joint_names.clear();
   mdjt.frame_ids.clear();
   mdjt.child_frame_ids.clear();

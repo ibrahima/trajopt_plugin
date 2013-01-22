@@ -17,8 +17,8 @@ public:
   ~TrajoptInterfaceROS();
   
   bool solve(const planning_scene::PlanningSceneConstPtr& planning_scene,
-             const moveit_msgs::GetMotionPlan::Request &req, 
-             moveit_msgs::GetMotionPlan::Response &res) const;
+             const moveit_msgs::MotionPlanRequest &req, 
+             moveit_msgs::MotionPlanResponse &res) const;
 
 protected:
   
@@ -30,7 +30,7 @@ protected:
   OpenRAVE::EnvironmentBasePtr penv;
   // OpenRAVE::RobotBasePtr robot;
   // OSGViewerPtr viewer;
-  bool enableViewer = false;
+  bool enableViewer;
 };
 
 }
