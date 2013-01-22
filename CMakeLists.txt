@@ -6,13 +6,25 @@ project(trajopt_plugin)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS dynamic_reconfigure moveit_core moveit_ros_planning pluginlib roscpp tf)
 
-# Hardcode trajopt paths for now
-include_directories("$ENV{HOME}/research/trajopt/src")
-include_directories("$ENV{HOME}/research/trajopt/ext/json/include")
-include_directories("$ENV{HOME}/research/trajopt/ext/gtest/include")
-include_directories("$ENV{HOME}/research/trajopt/ext/bullet/src")
+# Do something reasonably useful to find trajopt
+set(TRAJOPT_HOME "" CACHE STRING "Trajopt directory (e.g. ~/trajopt)")
+if ("${TRAJOPT_HOME}" STREQUAL "")
+  message(STATUS "Attempting to find trajopt")
+  find_path(problem_description src/trajopt/problem_description.hpp PATHS ~/research/trajopt ~/trajopt )
+  string(FIND ${problem_description} "src/trajopt" pathend REVERSE)
+  string(SUBSTRING ${problem_description} 0 ${pathend} TRAJOPT_HOME)
+  message("Trajopt path: ${TRAJOPT_HOME}")
+else()
+  message(STATUS "Using trajopt from ${TRAJOPT_HOME}")
+endif()
 
-link_directories("$ENV{HOME}/research/trajopt/build/lib")
+# Hardcode trajopt paths for now
+include_directories("${TRAJOPT_HOME}/src")
+include_directories("${TRAJOPT_HOME}/ext/json/include")
+include_directories("${TRAJOPT_HOME}/ext/gtest/include")
+include_directories("${TRAJOPT_HOME}/ext/bullet/src")
+
+link_directories("${TRAJOPT_HOME}/build/lib")
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
