@@ -136,10 +136,34 @@ bool TrajoptInterfaceROS::solve(const planning_scene::PlanningSceneConstPtr& pla
   cci->dist_pen = trajopt::DblVec(numSteps, 0.025);
   cci->name = "collision0";
 
-  boost::shared_ptr<trajopt::JointConstraintInfo> jci(new trajopt::JointConstraintInfo());
-  jci->vals = util::toDblVec(goalState);
-  jci->timestep = numSteps - 1;
-  jci->name = "joint0";
+  // Create pose constraints for each goal constraint
+  // There are also path and trajectory constraints, not sure of the difference
+  // Also not sure about absolute xyz tolerances on orientation constraints
+  for(int c = 0; c < req.goal_constraints.size(); c++){
+    map<std::string, geometry_msgs::Point> positions;
+    vector<moveit_msgs::PositionConstraint> position_constraints = req.goal_constraints[c].position_constraints;
+    // This loop is just in case constraints aren't matched up in order for each link
+    for(int p = 0; p < position_constraints.size(); p++){
+      // Might need to convert to world coordinates?
+      positions[position_constraints[p].link_name] = position_constraints[p].constraint_region.primitive_poses[0].position;
+    }
+    vector<moveit_msgs::OrientationConstraint> orientation_constraints = req.goal_constraints[c].orientation_constraints;
+    for(int o = 0; o < position_constraints.size(); o++){
+      // Might need to convert to world frame?
+      geometry_msgs::Point pos = positions[orientation_constraints[o].link_name];
+      geometry_msgs::Quaternion quat = orientation_constraints[o].orientation;
+      // Construct a pose constraint
+      boost::shared_ptr<trajopt::PoseCntInfo> ppci(new trajopt::PoseCntInfo());
+      ppci->timestep = numSteps - 1;
+      ppci->xyz = Eigen::Vector3d(pos.x, pos.y, pos.z);
+      ppci->wxyz = Eigen::Vector4d(quat.w, quat.x, quat.y, quat.z);
+      ppci->pos_coeffs = Eigen::Vector3d::Ones(); // TODO: Configure coefficients
+      ppci->rot_coeffs = Eigen::Vector3d::Ones();
+      ppci->link = myRobot->GetLink(orientation_constraints[o].link_name);
+      pci.cnt_infos.push_back(ppci);
+    }
+
+  }
 
   pci.basic_info.n_steps = numSteps;
   pci.basic_info.manip = manip->GetName();
@@ -148,7 +172,6 @@ bool TrajoptInterfaceROS::solve(const planning_scene::PlanningSceneConstPtr& pla
   pci.init_info = initinfo;
   pci.cost_infos.push_back(jvci);
   pci.cost_infos.push_back(cci);
-  pci.cnt_infos.push_back(jci);
 
   trajopt::TrajOptProbPtr prob = trajopt::ConstructProblem(pci);
 
