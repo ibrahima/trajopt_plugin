@@ -136,13 +136,16 @@ bool TrajoptInterfaceROS::solve(const planning_scene::PlanningSceneConstPtr& pla
   cci->dist_pen = trajopt::DblVec(numSteps, 0.025);
   cci->name = "collision0";
 
-  // Create pose constraints for each goal constraint
-  // There are also path and trajectory constraints, not sure of the difference
+  // Create optimization constraints for each goal constraint
+  // combining position and orientation into pose
+  // There are also path and trajectory constraints, not sure of the difference - ignoring for now
   // Also not sure about absolute xyz tolerances on orientation constraints
   for(int c = 0; c < req.goal_constraints.size(); c++){
+
+    // Pose constraints
     map<std::string, geometry_msgs::Point> positions;
     vector<moveit_msgs::PositionConstraint> position_constraints = req.goal_constraints[c].position_constraints;
-    // This loop is just in case constraints aren't matched up in order for each link
+    // This loop is just in case position and orientation constraints aren't matched up in order for each link
     for(int p = 0; p < position_constraints.size(); p++){
       // Might need to convert to world coordinates?
       positions[position_constraints[p].link_name] = position_constraints[p].constraint_region.primitive_poses[0].position;
@@ -163,6 +166,26 @@ bool TrajoptInterfaceROS::solve(const planning_scene::PlanningSceneConstPtr& pla
       pci.cnt_infos.push_back(ppci);
     }
 
+    // Joint constraints -  kind of hacky
+    sensor_msgs::JointState js;
+    js.name.clear();
+    js.position.clear();
+    vector<moveit_msgs::JointConstraint> joint_constraints = req.goal_constraints[c].joint_constraints;
+    for(int jc = 0; jc < joint_constraints.size(); jc++){
+      js.name.push_back(joint_constraints[jc].joint_name);
+      js.position.push_back(joint_constraints[jc].position);
+    }
+    if(!joint_constraints.empty()){
+      Eigen::VectorXd goalJointConstraints;
+      goalJointConstraints.resize(joint_constraints.size());
+      jointStateToArray(planning_scene->getKinematicModel(), js,
+                        req.group_name, goalJointConstraints);
+      boost::shared_ptr<trajopt::JointConstraintInfo> jci(new trajopt::JointConstraintInfo());
+      jci->vals = util::toDblVec(goalJointConstraints);
+      jci->timestep = numSteps - 1;
+      jci->name = "joint0";
+      pci.cnt_infos.push_back(jci);
+    }
   }
 
   pci.basic_info.n_steps = numSteps;
