@@ -12,7 +12,7 @@
   <arg name="allow_trajectory_execution" default="false"/>
   <arg name="max_safe_path_cost" default="1"/>
 
-  <include ns="move_group" file="$(find trajopt_plugin)/launch/my_pipeline.launch">
+  <include ns="move_group" file="$(find trajopt_plugin)/launch/planning_pipeline.launch">
 
   </include>
 
