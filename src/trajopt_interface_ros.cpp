@@ -1,19 +1,19 @@
 #include <openrave-core.h>
 #include <Eigen/Core>
+#include <Eigen/Dense>
 #include <trajopt/common.hpp>
 #include <ipi/sco/optimizers.hpp>
-#include <trajopt_interface_ros/trajopt_interface_ros.h>
-#include <moveit/kinematic_state/conversions.h>
-
-
-#include <Eigen/Dense>
-#include <trajopt_interface_ros/ros_rave_conversions.h>
 #include <trajopt/rave_utils.hpp>
 #include <utils/eigen_conversions.hpp>
 #include <trajopt/plot_callback.hpp>
+
+#include <moveit/constraint_samplers/constraint_sampler_manager.h>
+#include <moveit/kinematic_state/conversions.h>
+#include <trajopt_interface_ros/trajopt_interface_ros.h>
+#include <trajopt_interface_ros/ros_rave_conversions.h>
 #include <boost/foreach.hpp>
 #include <iostream>
-#include <moveit/constraint_samplers/constraint_sampler_manager.h>
+
 
 using namespace std;
 namespace trajopt_interface_ros
@@ -27,30 +27,22 @@ TrajoptInterfaceROS::TrajoptInterfaceROS(const kinematic_model::KinematicModelCo
   penv->StopSimulation();
   // Load the PR2 by default
   penv->Load("robots/pr2-beta-static.zae") ;
-  // robot = trajopt::GetRobot(*penv);
   
-  nh_.param("enable_viewer", enableViewer, false);
-  // if(enableViewer){
-  //   viewer.reset(new OSGViewer(penv));
-  //   viewer->UpdateSceneData();
-  //   penv->AddViewer(viewer);
-  // }
   loadParams();
 }
 
 TrajoptInterfaceROS::~TrajoptInterfaceROS()
 {
-  // viewer.reset();
   penv.reset();
   OpenRAVE::RaveDestroy();
 }
 void TrajoptInterfaceROS::loadParams(void) {
-  
+  nh_.param("enable_viewer", enableViewer, false);
 }
 
 bool TrajoptInterfaceROS::solve(const planning_scene::PlanningSceneConstPtr& planning_scene,
-				const moveit_msgs::MotionPlanRequest &req, 
-                         moveit_msgs::MotionPlanResponse &res) const
+                                const moveit_msgs::MotionPlanRequest &req,
+                                moveit_msgs::MotionPlanResponse &res) const
 {
   ros::WallTime start_time = ros::WallTime::now();
 
@@ -65,8 +57,8 @@ bool TrajoptInterfaceROS::solve(const planning_scene::PlanningSceneConstPtr& pla
   OpenRAVE::RobotBase::ManipulatorPtr manip = getManipulatorFromGroup(myRobot, model_group);
 
   int numJoints = model_group->getJointModels().size();
-  int numSteps = 10; // TODO: Configurable
-
+  int numSteps;
+  nh_.param("num_steps", numSteps, 10);
   Eigen::VectorXd initialState(numJoints);
   Eigen::VectorXd goalState(numJoints);
   ROS_INFO("Planning for %d joints", numJoints);
@@ -128,7 +120,9 @@ bool TrajoptInterfaceROS::solve(const planning_scene::PlanningSceneConstPtr& pla
   ROS_INFO("Init Traj dimensions: %d x %d", initinfo.data.rows(), initinfo.data.cols());
   
   boost::shared_ptr<trajopt::JointVelCostInfo> jvci(new trajopt::JointVelCostInfo());
-  jvci->coeffs = trajopt::DblVec(numJoints, 1); //TODO: Make configurable
+  int jointVelCoeffs;
+  nh_.param("joint_vel_coeffs", jointVelCoeffs, 1);
+  jvci->coeffs = trajopt::DblVec(numJoints, jointVelCoeffs);
   jvci->name = "jvel0";
 
   boost::shared_ptr<trajopt::CollisionCostInfo> cci(new trajopt::CollisionCostInfo());
@@ -215,6 +209,7 @@ bool TrajoptInterfaceROS::solve(const planning_scene::PlanningSceneConstPtr& pla
     ROS_INFO("Viewer enabled");
     myViewer = OSGViewer::GetOrCreate(myEnv);
     myViewer->UpdateSceneData();
+    nh_.param("plot_decimation", myViewer->m_plotDecimation, 10);
     opt.addCallback(trajopt::PlotCallback(*prob));
   }
 
