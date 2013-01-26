@@ -209,7 +209,7 @@ bool TrajoptInterfaceROS::solve(const planning_scene::PlanningSceneConstPtr& pla
     ROS_INFO("Viewer enabled");
     myViewer = OSGViewer::GetOrCreate(myEnv);
     myViewer->UpdateSceneData();
-    nh_.param("plot_decimation", myViewer->m_plotDecimation, 10);
+    nh_.param("plot_decimation", myViewer->m_plotDecimation, 1);
     opt.addCallback(trajopt::PlotCallback(*prob));
   }
 
