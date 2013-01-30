@@ -125,10 +125,12 @@ bool TrajoptInterfaceROS::solve(const planning_scene::PlanningSceneConstPtr& pla
   jvci->coeffs = trajopt::DblVec(numJoints, jointVelCoeffs);
   jvci->name = "jvel0";
 
-  boost::shared_ptr<trajopt::CollisionCostInfo> cci(new trajopt::CollisionCostInfo());
+  boost::shared_ptr<trajopt::ContinuousCollisionCostInfo> cci(new trajopt::ContinuousCollisionCostInfo());
+  cci->first_step = 0;
+  cci->last_step = numSteps-1;
   cci->coeffs = trajopt::DblVec(numSteps, 20);
-  cci->dist_pen = trajopt::DblVec(numSteps, 0.025);
-  cci->name = "collision0";
+  cci->dist_pen = trajopt::DblVec(numSteps, 0.035);
+  cci->name = "continuous_collision";
 
   // Create optimization constraints for each goal constraint
   // combining position and orientation into pose
