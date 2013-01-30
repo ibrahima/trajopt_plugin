@@ -54,7 +54,7 @@ def build_motion_plan_request(pos, quat, arm="right"):
     
     return m
 
-def test_grid(center_point, x_range=0.5, y_range=0.5, z_range=0.5, dx=0.1, dy=0.1, dz=0.1):
+def test_grid(center_point, x_range=0.1, y_range=0.2, z_range=0.2, dx=0.05, dy=0.05, dz=0.05):
     client = actionlib.SimpleActionClient('move_group', MoveGroupAction)
     
     print "Waiting for server"
@@ -107,4 +107,4 @@ if __name__ == "__main__":
     p.x = .5
     p.y = -.01
     p.z = 0.94
-    test_grid(p, y_range=0.2, z_range=0.2)
+    test_grid(p, x_range=0.1, y_range=0.2, z_range=0.2)
