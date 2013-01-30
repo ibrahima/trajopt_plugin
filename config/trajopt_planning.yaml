@@ -1,4 +1,4 @@
 enable_viewer: false
-num_steps: 100
+num_steps: 20
 joint_vel_coeffs: 1
-plot_decimation: 10
+plot_decimation: 1

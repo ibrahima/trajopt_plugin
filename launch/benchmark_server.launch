@@ -12,6 +12,7 @@
         launch-prefix="$(arg launch_prefix)" args="$(arg command_args)">
     <rosparam command="load" file="$(find pr2_moveit_config)/config/kinematics.yaml"/>
     <rosparam command="load" file="$(find pr2_moveit_config)/config/ompl_planning.yaml"/>
+    <rosparam command="load" file="$(find pr2_moveit_config)/config/chomp_planning.yaml"/>
     <rosparam command="load" file="$(find trajopt_plugin)/config/trajopt_planning.yaml"/>
   </node>
 
