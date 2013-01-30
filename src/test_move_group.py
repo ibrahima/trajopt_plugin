@@ -13,7 +13,8 @@ import actionlib
 import IPython
 from tf.transformations import *
 import time
-
+import sqlite3
+import numpy as np
 
 def build_motion_plan_request(pos, quat, arm="right"):
     m = MoveGroupGoal()
@@ -53,8 +54,33 @@ def build_motion_plan_request(pos, quat, arm="right"):
     
     return m
 
+def test_grid(center_point, x_range=0.5, y_range=0.5, z_range=0.5, dx=0.1, dy=0.1, dz=0.1):
+    client = actionlib.SimpleActionClient('move_group', MoveGroupAction)
     
-def test():
+    print "Waiting for server"
+    client.wait_for_server()
+    print "Connected to actionserver"
+
+    for xp in np.arange(center_point.x - x_range, center_point.x + x_range, dx):
+        for yp in np.arange(center_point.y - y_range, center_point.y + y_range, dy):
+            for zp in np.arange(center_point.z - z_range, center_point.z + z_range, dz):
+                p = Point()
+                p.x = xp
+                p.y = yp
+                p.z = zp
+                print "Sending planning request to point", p
+                q = Quaternion() # TODO: Configure orientation
+                q.w = 1
+                m = build_motion_plan_request(p, q)
+                client.send_goal(m)
+                t1 = time.time()
+                client.wait_for_result()
+                t2 = time.time()
+                result = client.get_result()
+                print "Motion planning request took", (t2-t1), "seconds"
+    
+    
+def test_single():
     client = actionlib.SimpleActionClient('move_group', MoveGroupAction)
     
     print "Waiting for server"
@@ -74,6 +100,11 @@ def test():
     result = client.get_result()
     print "Motion planning request took", (t2-t1), "seconds"
     print result
+
 if __name__ == "__main__":
     rospy.init_node("foobar")
-    test()
+    p = Point()
+    p.x = .5
+    p.y = -.01
+    p.z = 0.94
+    test_grid(p, y_range=0.2, z_range=0.2)
