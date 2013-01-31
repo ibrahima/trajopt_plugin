@@ -217,8 +217,10 @@ bool TrajoptInterfaceROS::solve(const planning_scene::PlanningSceneConstPtr& pla
 
   ROS_INFO("Optimization took %f sec to create", (ros::WallTime::now() - create_time).toSec());
 
+  ros::WallTime before_opt_time = ros::WallTime::now();
   opt.optimize();
-  ROS_INFO("Optimization actually took %f sec to run", (ros::WallTime::now() - create_time).toSec());
+  ros::WallDuration optduration = ros::WallTime::now() - before_opt_time;
+  ROS_INFO("Optimization actually took %f sec to run", (optduration).toSec());
 
   create_time = ros::WallTime::now();
 
@@ -271,7 +273,7 @@ bool TrajoptInterfaceROS::solve(const planning_scene::PlanningSceneConstPtr& pla
   ROS_INFO("Response took %f sec to create", (ros::WallTime::now() - create_time).toSec());
   ROS_INFO("Serviced planning request in %f wall-seconds, trajectory duration is %f", (ros::WallTime::now() - start_time).toSec(), res.trajectory.joint_trajectory.points[finalTraj.rows()-1].time_from_start.toSec());
   res.error_code.val = moveit_msgs::MoveItErrorCodes::SUCCESS;
-  res.planning_time = ros::Duration((ros::WallTime::now() - start_time).toSec());
+  res.planning_time = ros::Duration(optduration.toSec());
 
   if(enableViewer){
     myEnv->Remove(myViewer);
