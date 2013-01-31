@@ -59,10 +59,9 @@ OpenRAVE::KinBodyPtr moveitObjectToKinBody(collision_detection::CollisionWorld::
       // LOG_WARN("Importing a mesh");
       // Not actually sure if mesh and trimesh are the same thing.
       // Hopefully don't have to triangulate non-triangular meshes
-      boost::shared_ptr<const shapes::Sphere> sph = boost::dynamic_pointer_cast<const shapes::Sphere>(shape);
+      RAVELOG_ERROR("I don't know how to convert a mesh to openrave\n");
       info._type = OpenRAVE::KinBody::Link::GeomTrimesh;
-      continue; // TODO: Implement this and remove
-      break;
+      continue;
 	}
     default:
       // LOG_WARN("Unknown shape type");
@@ -114,7 +113,7 @@ bool setRaveRobotState(OpenRAVE::RobotBasePtr robot, sensor_msgs::JointState js)
 	// Not sure if different types of joints need to be handled separately
 	OpenRAVE::KinBody::JointPtr joint = robot->GetJoint(*nameit);
 	if(joint){
-      if(joint->GetDOFIndex()>0){
+      if(joint->GetDOFIndex() >= 0){
         dofs.push_back(joint->GetDOFIndex());
         positions.push_back(*posit);
       }

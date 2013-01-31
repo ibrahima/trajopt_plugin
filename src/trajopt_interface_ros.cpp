@@ -211,7 +211,7 @@ bool TrajoptInterfaceROS::solve(const planning_scene::PlanningSceneConstPtr& pla
     ROS_INFO("Viewer enabled");
     myViewer = OSGViewer::GetOrCreate(myEnv);
     myViewer->UpdateSceneData();
-    nh_.param("plot_decimation", myViewer->m_plotDecimation, 1);
+ //   nh_.param("plot_decimation", myViewer->m_plotDecimation, 1);
     opt.addCallback(trajopt::PlotCallback(*prob));
   }
 
@@ -269,7 +269,7 @@ bool TrajoptInterfaceROS::solve(const planning_scene::PlanningSceneConstPtr& pla
   }
   
   ROS_INFO("Response took %f sec to create", (ros::WallTime::now() - create_time).toSec());
-  ROS_INFO("Serviced planning request in %f wall-seconds, trajectory duration is %f", (ros::WallTime::now() - start_time).toSec(), res.trajectory.joint_trajectory.points[finalTraj.rows()].time_from_start.toSec());
+  ROS_INFO("Serviced planning request in %f wall-seconds, trajectory duration is %f", (ros::WallTime::now() - start_time).toSec(), res.trajectory.joint_trajectory.points[finalTraj.rows()-1].time_from_start.toSec());
   res.error_code.val = moveit_msgs::MoveItErrorCodes::SUCCESS;
   res.planning_time = ros::Duration((ros::WallTime::now() - start_time).toSec());
 
@@ -277,6 +277,7 @@ bool TrajoptInterfaceROS::solve(const planning_scene::PlanningSceneConstPtr& pla
     myEnv->Remove(myViewer);
     myViewer.reset();
   }
+  myEnv->Destroy();
 
   // I assume the OpenRAVE environment and all its objects are deallocated at
   // the end of the function; should verify that it's not leaking memory
