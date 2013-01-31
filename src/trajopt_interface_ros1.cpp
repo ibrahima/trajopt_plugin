@@ -1,50 +1,50 @@
-#include <openrave-core.h>
 #include <Eigen/Core>
 #include <Eigen/Dense>
-#include <trajopt/common.hpp>
-#include <ipi/sco/optimizers.hpp>
-#include <trajopt/rave_utils.hpp>
 #include <utils/eigen_conversions.hpp>
-#include <trajopt/plot_callback.hpp>
-
 #include <moveit/constraint_samplers/constraint_sampler_manager.h>
 #include <moveit/kinematic_state/conversions.h>
 #include <trajopt_interface_ros/trajopt_interface_ros.h>
-#include <trajopt_interface_ros/ros_rave_conversions.h>
-#include <boost/foreach.hpp>
+#include <moveit_msgs/GetMotionPlan.h>
 #include <iostream>
 
 
 using namespace std;
+using namespace moveit_msgs;
 namespace trajopt_interface_ros
 {
 
-TrajoptInterfaceROS::TrajoptInterfaceROS(const kinematic_model::KinematicModelConstPtr& kmodel) :
-  kmodel(kmodel), nh_("~"), enableViewer(false)
+TrajoptInterfaceROS::TrajoptInterfaceROS(const kinematic_model::KinematicModelConstPtr& kmodel)
 {
-  OpenRAVE::RaveInitialize();
-  penv = OpenRAVE::RaveCreateEnvironment();
-  penv->StopSimulation();
-  // Load the PR2 by default
-  penv->Load("robots/pr2-beta-static.zae") ;
-  
-  loadParams();
+  int argc=1;
+  char* argv[] = {"asdf"};
+  ros::init(argc, argv, "asdf");
+  nh_ = ros::NodeHandle("~");
+  planner_ = nh_.serviceClient<moveit_msgs::GetMotionPlan>("trajopt_planner");
 }
 
 TrajoptInterfaceROS::~TrajoptInterfaceROS()
 {
-  penv.reset();
-  OpenRAVE::RaveDestroy();
-}
-void TrajoptInterfaceROS::loadParams(void) {
-  nh_.param("enable_viewer", enableViewer, false);
 }
 
 bool TrajoptInterfaceROS::solve(const planning_scene::PlanningSceneConstPtr& planning_scene,
                                 const moveit_msgs::MotionPlanRequest &req,
                                 moveit_msgs::MotionPlanResponse &res) const
 {
-  ros::WallTime start_time = ros::WallTime::now();
+  ROS_INFO("got a request");
+  GetMotionPlanRequest req1;
+  req1.motion_plan_request = const_cast<moveit_msgs::MotionPlanRequest&>(req);
+  GetMotionPlanResponse resp1;
+  try {
+    const_cast<TrajoptInterfaceROS*>(this)->planner_.call(req1, resp1);
+    res = resp1.motion_plan_response;
+    cout << res << endl;
+    ROS_INFO("done");
+    return true;
+  }
+  catch (...) {
+    return false;
+  }
+#if 0
 
   OpenRAVE::EnvironmentBasePtr myEnv = penv->CloneSelf(OpenRAVE::Clone_Bodies);
   OSGViewerPtr myViewer;
@@ -206,7 +206,7 @@ bool TrajoptInterfaceROS::solve(const planning_scene::PlanningSceneConstPtr& pla
   // Why does this not happen in the constructor for opt?
   opt.initialize(trajopt::trajToDblVec(prob->GetInitTraj()));
   ROS_INFO("Gave optimization initial trajectory");
-  
+
   if(enableViewer){
     ROS_INFO("Viewer enabled");
     myViewer = OSGViewer::GetOrCreate(myEnv);
@@ -217,16 +217,13 @@ bool TrajoptInterfaceROS::solve(const planning_scene::PlanningSceneConstPtr& pla
 
   ROS_INFO("Optimization took %f sec to create", (ros::WallTime::now() - create_time).toSec());
 
-  ros::WallTime before_opt_time = ros::WallTime::now();
   opt.optimize();
-  ros::WallDuration optduration = ros::WallTime::now() - before_opt_time;
-  ROS_INFO("Optimization actually took %f sec to run", (optduration).toSec());
+  ROS_INFO("Optimization actually took %f sec to run", (ros::WallTime::now() - create_time).toSec());
 
   create_time = ros::WallTime::now();
 
   // assume that the trajectory is now optimized, fill in the output structure:
-  res.group_name = req.group_name;
-  res.trajectory_start = req.start_state;
+
   trajopt::TrajArray finalTraj = trajopt::getTraj(opt.x(), prob->GetVars());
   // fill in joint names:
   // TODO: May need to make sure that joint names are in the same order
@@ -274,7 +271,7 @@ bool TrajoptInterfaceROS::solve(const planning_scene::PlanningSceneConstPtr& pla
   ROS_INFO("Response took %f sec to create", (ros::WallTime::now() - create_time).toSec());
   ROS_INFO("Serviced planning request in %f wall-seconds, trajectory duration is %f", (ros::WallTime::now() - start_time).toSec(), res.trajectory.joint_trajectory.points[finalTraj.rows()-1].time_from_start.toSec());
   res.error_code.val = moveit_msgs::MoveItErrorCodes::SUCCESS;
-  res.planning_time = ros::Duration(optduration.toSec());
+  res.planning_time = ros::Duration((ros::WallTime::now() - start_time).toSec());
 
   if(enableViewer){
     myEnv->Remove(myViewer);
@@ -285,6 +282,7 @@ bool TrajoptInterfaceROS::solve(const planning_scene::PlanningSceneConstPtr& pla
   // I assume the OpenRAVE environment and all its objects are deallocated at
   // the end of the function; should verify that it's not leaking memory
   return true;
+#endif
 }
 
 }
