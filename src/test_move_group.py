@@ -17,6 +17,7 @@ sys.path.append("/home/ibrahima/moveit/devel/lib/python2.7/dist-packages")
 import rospy
 
 from moveit_msgs.msg import *
+from moveit_msgs.srv import *
 from geometry_msgs.msg import *
 from shape_msgs.msg import *
 from trajopt_plugin.srv import *
@@ -168,18 +169,19 @@ def test_plan_to_pose(xyz, xyzw, leftright, robot):
     #m = build_motion_plan_request(p, q, leftright)
     m = build_joint_request(joint_solutions[0], leftright, robot)
     #print "request", m
-    client.send_goal(m)
+
+    get_motion_plan = rospy.ServiceProxy('plan_kinematic_path', GetMotionPlan)
+    #client.send_goal(m)
     t1 = time.time()
-    client.wait_for_result()
+    #client.wait_for_result()
     t2 = time.time()
-    result = client.get_result()    
-    traj =  [list(jtp.positions) for jtp in result.planned_trajectory.joint_trajectory.points]
-    if result is not None:
+    response = get_motion_plan(m)
+    print response.planning_time
+    traj =  [list(jtp.positions) for jtp in response.trajectory.joint_trajectory.points]
+    if response is not None:
         return not has_collision(traj, manip)
     else:
         raise Exception("no response from planner")
-
-    res = MoveGroupActionResult()
     
 def update_rave_from_ros(robot, ros_values, ros_joint_names):
     inds_ros2rave = np.array([robot.GetJointIndex(name) for name in ros_joint_names])
