@@ -114,7 +114,7 @@ bool setRaveRobotState(OpenRAVE::RobotBasePtr robot, sensor_msgs::JointState js)
 	// Not sure if different types of joints need to be handled separately
 	OpenRAVE::KinBody::JointPtr joint = robot->GetJoint(*nameit);
 	if(joint){
-      if(joint->GetDOFIndex()>0){
+      if(joint->GetDOFIndex()>=0){
         dofs.push_back(joint->GetDOFIndex());
         positions.push_back(*posit);
       }
