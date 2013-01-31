@@ -206,7 +206,7 @@ bool TrajoptInterfaceROS::solve(const planning_scene::PlanningSceneConstPtr& pla
   // Why does this not happen in the constructor for opt?
   opt.initialize(trajopt::trajToDblVec(prob->GetInitTraj()));
   ROS_INFO("Gave optimization initial trajectory");
-
+  
   if(enableViewer){
     ROS_INFO("Viewer enabled");
     myViewer = OSGViewer::GetOrCreate(myEnv);
@@ -223,7 +223,8 @@ bool TrajoptInterfaceROS::solve(const planning_scene::PlanningSceneConstPtr& pla
   create_time = ros::WallTime::now();
 
   // assume that the trajectory is now optimized, fill in the output structure:
-
+  res.group_name = req.group_name;
+  res.trajectory_start = req.start_state;
   trajopt::TrajArray finalTraj = trajopt::getTraj(opt.x(), prob->GetVars());
   // fill in joint names:
   // TODO: May need to make sure that joint names are in the same order

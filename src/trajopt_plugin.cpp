@@ -3,7 +3,6 @@
 #include <moveit/kinematic_model/kinematic_model.h>
 #include <moveit_msgs/GetMotionPlan.h>
 #include <trajopt_interface_ros/trajopt_interface_ros.h>
-// #include <trajopt_interface_ros/ros_rave_conversions.h>
 
 #include <boost/shared_ptr.hpp>
 
