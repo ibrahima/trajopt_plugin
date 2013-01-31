@@ -26,6 +26,7 @@ protected:
   void loadParams(void);
   
   ros::NodeHandle nh_; /// The ROS node handle
+  ros::ServiceClient planner_;
   kinematic_model::KinematicModelConstPtr kmodel;
   OpenRAVE::EnvironmentBasePtr penv;
   // OpenRAVE::RobotBasePtr robot;

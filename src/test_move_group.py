@@ -50,7 +50,8 @@ def has_collision(traj, manip):
         if col_now: 
             collision = True
             col_times.append(i)
-    if col_times: print "collision at timesteps", col_times            
+    if col_times: print "collision at timesteps", col_times      
+    else: print "no collisions"
     return collision
 
 def build_joint_request(jvals, arm, robot):
@@ -175,9 +176,9 @@ def test_plan_to_pose(xyz, xyzw, leftright, robot):
     result = client.get_result()    
     traj =  [list(jtp.positions) for jtp in result.planned_trajectory.joint_trajectory.points]
     if result is not None:
-        return not has_collision(traj, manip)
+        return dict(returned = True, safe = not has_collision(traj, manip), traj = traj)
     else:
-        raise Exception("no response from planner")
+        raise dict(returned = False)
 
     res = MoveGroupActionResult()
     
@@ -208,9 +209,20 @@ if __name__ == "__main__":
     update_rave_from_ros(robot, ROS_DEFAULT_JOINT_VALS, ROS_JOINT_NAMES)
     
 
-    xs, ys, zs = np.mgrid[.35:.85:.05, 0:.5:.05, .8:.9:.1]
+    xs, ys, zs = np.mgrid[.35:.65:.05, 0:.5:.05, .8:.9:.1]
     results = []
     for (x,y,z) in zip(xs.flat, ys.flat, zs.flat):
         result = test_plan_to_pose([x,y,z], [0,0,0,1], "left", robot)
-        print result
         if result is not None: results.append(result)
+        
+    success_count, fail_count, no_answer_count = 0,0,0
+    for result in results:
+        if result["returned"]:
+            if result["safe"]: success_count += 1
+            else: fail_count += 1
+        else:
+            no_answer_count += 1
+    print "success count:", success_count
+    print "fail count:", fail_count
+    print "no answer count:", no_answer_count
+            

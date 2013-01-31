@@ -4,27 +4,31 @@ project(trajopt_plugin)
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(catkin REQUIRED COMPONENTS dynamic_reconfigure moveit_core moveit_ros_planning pluginlib roscpp tf)
+find_package(catkin REQUIRED COMPONENTS dynamic_reconfigure moveit_core moveit_ros_planning pluginlib roscpp tf genmsg)
 
 # Do something reasonably useful to find trajopt
-set(TRAJOPT_HOME "" CACHE STRING "Trajopt directory (e.g. ~/trajopt)")
-if ("${TRAJOPT_HOME}" STREQUAL "")
-  message(STATUS "Attempting to find trajopt")
-  find_path(problem_description src/trajopt/problem_description.hpp PATHS ~/research/trajopt ~/trajopt )
-  string(FIND ${problem_description} "src/trajopt" pathend REVERSE)
-  string(SUBSTRING ${problem_description} 0 ${pathend} TRAJOPT_HOME)
-  message("Trajopt path: ${TRAJOPT_HOME}")
+set(TRAJOPT_SOURCE_DIR "" CACHE STRING "Trajopt directory (e.g. ~/trajopt)")
+set(TRAJOPT_BUILD_DIR "" CACHE STRING "Trajopt build directory (e.g. ~/build/trajopt)")
+if ("${TRAJOPT_SOURCE_DIR}" STREQUAL "")
+  # message(STATUS "Attempting to find trajopt")
+  # find_path(problem_description src/trajopt/problem_description.hpp PATHS ~/research/trajopt ~/trajopt ~/Proj)
+  # string(FIND ${problem_description} "src/trajopt" pathend REVERSE)
+  # string(SUBSTRING ${problem_description} 0 ${pathend} TRAJOPT_SOURCE_DIR)
+  # message("Trajopt path: ${TRAJOPT_SOURCE_DIR}")
+  message(FATAL_ERROR "Specify trajopt source dir and build dir")
 else()
-  message(STATUS "Using trajopt from ${TRAJOPT_HOME}")
+  message(STATUS "Using trajopt from ${TRAJOPT_SOURCE_DIR}")
 endif()
 
 # Hardcode trajopt paths for now
-include_directories("${TRAJOPT_HOME}/src")
-include_directories("${TRAJOPT_HOME}/ext/json/include")
-include_directories("${TRAJOPT_HOME}/ext/gtest/include")
-include_directories("${TRAJOPT_HOME}/ext/bullet/src")
+include_directories("${TRAJOPT_SOURCE_DIR}/src")
+include_directories("${TRAJOPT_SOURCE_DIR}/ext/json/include")
+include_directories("${TRAJOPT_SOURCE_DIR}/ext/gtest/include")
+include_directories("${TRAJOPT_SOURCE_DIR}/ext/bullet/src")
 
-link_directories("${TRAJOPT_HOME}/build/lib")
+include_directories("/home/joschu/ros/moveit/devel/include")
+
+link_directories("${TRAJOPT_BUILD_DIR}/lib")
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -48,17 +52,16 @@ include_directories( ${OpenRAVE_INCLUDE_DIRS})
 # )
 
 ## Generate services in the 'srv' folder
-# add_service_files(
-#   FILES
-#   Service1.srv
-#   Service2.srv
-# )
+add_service_files(
+   FILES
+   String2String.srv
+)
 
 ## Generate added messages and services with any dependencies listed here
-# generate_messages(
-#   DEPENDENCIES
-#   std_msgs  # Or other packages containing msgs
-# )
+generate_messages(
+   DEPENDENCIES
+   std_msgs  # Or other packages containing msgs
+)
 
 ###################################################
 ## Declare things to be passed to other projects ##
@@ -92,7 +95,7 @@ include_directories(include
 
 set(MOVEIT_LIB_NAME moveit_trajopt_interface_ros)
 
-add_library(${MOVEIT_LIB_NAME} src/trajopt_interface_ros.cpp src/ros_rave_conversions.cpp)
+add_library(${MOVEIT_LIB_NAME} src/trajopt_interface_ros1.cpp src/ros_rave_conversions.cpp)
 target_link_libraries(${MOVEIT_LIB_NAME}
   ${catkin_LIBRARIES}
   trajopt
@@ -108,6 +111,18 @@ target_link_libraries(moveit_trajopt_planner_plugin
   ${OpenRAVE_CORE_LIBRARIES}
   trajopt
   )
+
+add_executable(traj_verifier src/traj_verifier.cpp)
+target_link_libraries(traj_verifier
+	${MOVEIT_LIB_NAME}
+	${catkin_LIBRARIES}
+	${OpenRAVE_LIBRARIES}
+	${OpenRAVE_CORE_LIBRARIES}
+	trajopt
+	json
+	osgviewer
+	boost_python
+)
 
 ## Add dependencies to the executable
 # add_dependencies(trajopt_plugin_node ${PROJECT_NAME})
