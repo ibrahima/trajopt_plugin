@@ -4,7 +4,7 @@ project(trajopt_plugin)
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(catkin REQUIRED COMPONENTS dynamic_reconfigure moveit_core moveit_ros_planning pluginlib roscpp tf)
+find_package(catkin REQUIRED COMPONENTS dynamic_reconfigure moveit_core moveit_ros_planning pluginlib roscpp tf genmsg)
 
 # Do something reasonably useful to find trajopt
 set(TRAJOPT_SOURCE_DIR "" CACHE STRING "Trajopt directory (e.g. ~/trajopt)")

@@ -116,9 +116,48 @@ def build_cart_request(pos, quat, arm):
     m.goal_constraints = [ c ]
     
     return m
+<<<<<<< HEAD:src/move_group_battery.py
     
 def test_plan_to_pose(xyz, xyzw, leftright, robot):
     manip = robot.GetManipulator(leftright + "arm")
+=======
+
+def test_grid(center_point, x_range=0.1, y_range=0.2, z_range=0.2, dx=0.05, dy=0.05, dz=0.05):
+    client = actionlib.SimpleActionClient('move_group', MoveGroupAction)
+    
+    print "Waiting for server"
+    client.wait_for_server()
+    print "Connected to actionserver"
+
+    for xp in np.arange(center_point.x - x_range, center_point.x + x_range, dx):
+        for yp in np.arange(center_point.y - y_range, center_point.y + y_range, dy):
+            for zp in np.arange(center_point.z - z_range, center_point.z + z_range, dz):
+                p = Point()
+                p.x = xp
+                p.y = yp
+                p.z = zp
+                print "Sending planning request to point", p
+                q = Quaternion() # TODO: Configure orientation
+                q.w = 1
+                m = build_motion_plan_request(p, q)
+                client.send_goal(m)
+                t1 = time.time()
+                client.wait_for_result()
+                t2 = time.time()
+                result = client.get_result()
+                print "Motion planning request took", (t2-t1), "seconds"
+                
+                if m.request.group_name == "right_arm": manipname = "rightarm"
+                elif m.request.group_name == "left_arm": manipname = "leftarm"
+                else: raise Exception("invalid group name")
+
+                if rospy.is_shutdown(): return
+    
+    
+def test_plan_to_pose(xyz, xyzw, leftright, robot):
+    manip = robot.GetManipulator(leftright + "arm")
+    client = actionlib.SimpleActionClient('move_group', MoveGroupAction)    
+>>>>>>> 5d0ae256a280b6694a4f03ed492c8500b4cca424:src/test_move_group.py
 
     joint_solutions = ku.ik_for_link(rave.matrixFromPose(np.r_[xyzw[3], xyzw[:3], xyz]), manip, "%s_gripper_tool_frame"%leftright[0], 
                          1, True)
@@ -130,11 +169,20 @@ def test_plan_to_pose(xyz, xyzw, leftright, robot):
 
     m = build_joint_request(joint_solutions[0], leftright, robot)
 
+<<<<<<< HEAD:src/move_group_battery.py
     t1 = time.time()
     t2 = time.time()
 
     response = get_motion_plan(m).motion_plan_response
     assert isinstance(response, MotionPlanResponse)
+=======
+    get_motion_plan = rospy.ServiceProxy('plan_kinematic_path', GetMotionPlan)
+    t1 = time.time()
+    response = get_motion_plan(m.request).motion_plan_response
+    t2 = time.time()
+
+    print response.planning_time
+>>>>>>> 5d0ae256a280b6694a4f03ed492c8500b4cca424:src/test_move_group.py
     traj =  [list(jtp.positions) for jtp in response.trajectory.joint_trajectory.points]
     if response is not None:
         return dict(returned = True, safe = not has_collision(traj, manip), traj = traj, planning_time = response.planning_time)
@@ -149,7 +197,6 @@ def update_rave_from_ros(robot, ros_values, ros_joint_names):
     rave_values = [ros_values[i_ros] for i_ros in good_ros_inds]
     robot.SetJointValues(rave_values[:20],rave_inds[:20])
     robot.SetJointValues(rave_values[20:],rave_inds[20:])   
-
     
 get_motion_plan = None
 env = None
@@ -163,6 +210,7 @@ def main():
     loadsuccess = env.Load(envfile)    
     assert loadsuccess
     
+<<<<<<< HEAD:src/move_group_battery.py
     get_motion_plan = rospy.ServiceProxy('trajopt_planner', GetMotionPlan)    
     print "waiting for trajopt_planner"
     get_motion_plan.wait_for_service()
@@ -173,6 +221,17 @@ def main():
     
 
     xs, ys, zs = np.mgrid[.35:.65:.05, 0:.5:.05, .8:.9:.1]
+=======
+    client = actionlib.SimpleActionClient('move_group', MoveGroupAction)    
+    print "Waiting for server"
+    client.wait_for_server()
+    print "Connected to actionserver"
+        
+    robot = env.GetRobots()[0]
+    update_rave_from_ros(robot, ROS_DEFAULT_JOINT_VALS, ROS_JOINT_NAMES)
+    
+    xs, ys, zs = np.mgrid[.35:.85:.05, 0:.5:.05, .8:.9:.1]
+>>>>>>> 5d0ae256a280b6694a4f03ed492c8500b4cca424:src/test_move_group.py
     results = []
     for (x,y,z) in zip(xs.flat, ys.flat, zs.flat):
         result = test_plan_to_pose([x,y,z], [0,0,0,1], "left", robot)
