@@ -1,6 +1,56 @@
 countertop
 start
-1
+2
+pr2.countertop.fridge
+bl_caster_l_wheel_joint = 0
+bl_caster_r_wheel_joint = 0
+bl_caster_rotation_joint = 0
+br_caster_l_wheel_joint = 0
+br_caster_r_wheel_joint = 0
+br_caster_rotation_joint = 0
+fl_caster_l_wheel_joint = 0
+fl_caster_r_wheel_joint = 0
+fl_caster_rotation_joint = 0
+fr_caster_l_wheel_joint = 0
+fr_caster_r_wheel_joint = 0
+fr_caster_rotation_joint = 0
+head_pan_joint = 0
+head_tilt_joint = 0
+l_elbow_flex_joint = -2.10046
+l_forearm_roll_joint = 2.03356
+l_gripper_joint = 0
+l_gripper_l_finger_joint = 0
+l_gripper_l_finger_tip_joint = 0
+l_gripper_motor_screw_joint = 0
+l_gripper_motor_slider_joint = 0
+l_gripper_r_finger_joint = 0
+l_gripper_r_finger_tip_joint = 0
+l_shoulder_lift_joint = 0.340966
+l_shoulder_pan_joint = 1.83943
+l_upper_arm_roll_joint = 1.33668
+l_wrist_flex_joint = -0.397105
+l_wrist_roll_joint = -1.83829
+laser_tilt_mount_joint = 0
+r_elbow_flex_joint = -1.57441
+r_forearm_roll_joint = -0.151528
+r_gripper_joint = 0
+r_gripper_l_finger_joint = 0
+r_gripper_l_finger_tip_joint = 0
+r_gripper_motor_screw_joint = 0
+r_gripper_motor_slider_joint = 0
+r_gripper_r_finger_joint = 0
+r_gripper_r_finger_tip_joint = 0
+r_shoulder_lift_joint = 1.14868
+r_shoulder_pan_joint = -1.31222
+r_upper_arm_roll_joint = -0.512238
+r_wrist_flex_joint = -1.62493
+r_wrist_roll_joint = -0.681114
+torso_lift_joint = 0.21
+torso_lift_motor_screw_joint = 0
+world_joint/theta = 3.14
+world_joint/x = 1.1
+world_joint/y = 0.5
+.
 pr2.countertop.initial
 bl_caster_l_wheel_joint = 0
 bl_caster_r_wheel_joint = 0
@@ -52,12 +102,18 @@ world_joint/x = 1
 world_joint/y = 1.5
 .
 goal
-17
+25
 link_constraint
 countertop.cupboard_01
 
 xyz 0.67251 1.20851 0.619106
 rpy 1.52349 0.00678076 -3.13347
+.
+link_constraint
+countertop.cupboard_02
+
+xyz 0.601703 0.833434 0.513338
+rpy 1.54056 0.0674997 -3.1342
 .
 link_constraint
 countertop.dishwasher_01
@@ -70,6 +126,48 @@ countertop.dishwasher_02
 
 xyz 0.545323 2.00906 0.492193
 rpy 2.12784 0.0603021 -2.934
+.
+link_constraint
+countertop.fridge.shelf_b_01
+
+xyz 0.640947 0.235706 0.752008
+rpy 1.54056 0.0674997 -3.1342
+.
+link_constraint
+countertop.fridge.shelf_b_02
+
+xyz 0.618777 0.563494 0.742093
+rpy 1.54056 0.0674997 -3.1342
+.
+link_constraint
+countertop.fridge.shelf_m_02
+
+xyz 0.638895 0.246856 0.993647
+rpy 1.54056 0.0674997 -3.1342
+.
+link_constraint
+countertop.fridge.shelf_m_1
+
+xyz 0.617139 0.565082 1.02755
+rpy 1.54056 0.0674997 -3.1342
+.
+link_constraint
+countertop.fridge.shelf_t_01
+
+xyz 0.674701 0.588457 1.328
+rpy 1.473 -0.0369116 3.10298
+.
+link_constraint
+countertop.fridge.shelf_t_02
+
+xyz 0.659482 0.222234 1.31718
+rpy 1.62222 -0.0422399 3.1089
+.
+link_constraint
+countertop.fridge_chest_handle_01
+
+xyz 0.780217 0.359148 0.751758
+rpy 1.473 -0.0369113 -2.14491
 .
 link_constraint
 countertop.goal1
@@ -110,7 +208,7 @@ rpy 0.00715627 -0.0169191 3.08307
 link_constraint
 countertop.right_counter_03
 
-xyz 0.464231 1.98574 1.11831
+xyz 0.465064 1.99995 1.11843
 rpy -1.71549 -1.51159 1.41822
 .
 link_constraint
