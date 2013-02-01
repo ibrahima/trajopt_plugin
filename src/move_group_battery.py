@@ -136,7 +136,7 @@ def robot_state_from_pose_goal(xyz, xyzw, arm, robot, initial_state = build_robo
     new_state = alter_robot_state(initial_state, joint_names, joint_values)
     return new_state
 
-def test_plan_to_pose(xyz, xyzw, leftright, robot, planner_id=''):
+def test_plan_to_pose(xyz, xyzw, leftright, robot, initial_state = build_robot_state(), planner_id=''):
     manip = robot.GetManipulator(leftright + "arm")
 
     joint_solutions = ku.ik_for_link(rave.matrixFromPose(np.r_[xyzw[3], xyzw[:3], xyz]), manip, "%s_gripper_tool_frame"%leftright[0], 
@@ -146,7 +146,7 @@ def test_plan_to_pose(xyz, xyzw, leftright, robot, planner_id=''):
         print "pose is not reachable"
         return None
 
-    m = build_joint_request(joint_solutions[0], leftright, robot, planner_id=planner_id)
+    m = build_joint_request(joint_solutions[0], leftright, robot, initial_state, planner_id=planner_id)
 
     t1 = time.time()
     t2 = time.time()
@@ -173,6 +173,16 @@ def update_rave_from_ros(robot, ros_values, ros_joint_names):
     
 get_motion_plan = None
 env = None
+
+def warehouse_test(initial_state_id, goal_constraint_starts_with):
+    from warehouse_utils import MoveitWarehouseDatabase
+    constraints_db = MoveitWarehouseDatabase('moveit_constraints')
+    states_db = MoveitWarehouseDatabase('moveit_robot_states')
+    initial_state = states_db.get_message(RobotState, state_id=initial_state_id)
+    query = {'constraints_id':{"$regex":"^%s.*" % goal_constraint_starts_with}}
+    constraints = constraints_db.get_messages(Constraints, query)
+    print initial_state
+    print len(constraints)
     
 def main():
     global get_motion_plan, env, robot
@@ -208,4 +218,6 @@ def main():
     print "fail count:", fail_count
     print "no answer count:", no_answer_count
 
+
 main()
+# warehouse_test('pr2.tunnel.initial', "tunnel")
