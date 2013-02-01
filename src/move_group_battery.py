@@ -156,8 +156,10 @@ def test_plan_to_pose(xyz, xyzw, leftright, robot, initial_state = build_robot_s
         raw_input("press enter to continue")
 
     if response is not None:
+        if response.error_code.val != 1:
+            print "Planner returned error code", response.error_code.val
         traj =  [list(jtp.positions) for jtp in response.trajectory.joint_trajectory.points]
-        return dict(returned = True, safe = not check_traj(traj, manip, 100), traj = traj, planning_time = response.planning_time)
+        return dict(returned = True, safe = not check_traj(traj, manip, 100), traj = traj, planning_time = response.planning_time, error_code = response.error_code.val)
     else:
         return dict(returned = False)
     
@@ -232,8 +234,8 @@ def main():
         
     success_count, fail_count, no_answer_count = 0,0,0
     for result in results:
-        if result["returned"]:
-            if result["safe"]: success_count += 1
+        if result["returned"] and result["error_code"] == 1:
+            if result["safe"] : success_count += 1
             else: fail_count += 1
         else:
             no_answer_count += 1
