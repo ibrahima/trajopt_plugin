@@ -1,0 +1,145 @@
+countertop
+start
+1
+pr2.countertop.initial
+bl_caster_l_wheel_joint = 0
+bl_caster_r_wheel_joint = 0
+bl_caster_rotation_joint = 0
+br_caster_l_wheel_joint = 0
+br_caster_r_wheel_joint = 0
+br_caster_rotation_joint = 0
+fl_caster_l_wheel_joint = 0
+fl_caster_r_wheel_joint = 0
+fl_caster_rotation_joint = 0
+fr_caster_l_wheel_joint = 0
+fr_caster_r_wheel_joint = 0
+fr_caster_rotation_joint = 0
+head_pan_joint = 0
+head_tilt_joint = 0
+l_elbow_flex_joint = -1.4
+l_forearm_roll_joint = 0.000799433
+l_gripper_joint = 0
+l_gripper_l_finger_joint = 0
+l_gripper_l_finger_tip_joint = 0
+l_gripper_motor_screw_joint = 0
+l_gripper_motor_slider_joint = 0
+l_gripper_r_finger_joint = 0
+l_gripper_r_finger_tip_joint = 0
+l_shoulder_lift_joint = 1
+l_shoulder_pan_joint = 1.5
+l_upper_arm_roll_joint = 0.00568301
+l_wrist_flex_joint = -0.743912
+l_wrist_roll_joint = 0.000498893
+laser_tilt_mount_joint = 0
+r_elbow_flex_joint = -1.4
+r_forearm_roll_joint = -0.000417087
+r_gripper_joint = 0
+r_gripper_l_finger_joint = 0
+r_gripper_l_finger_tip_joint = 0
+r_gripper_motor_screw_joint = 0
+r_gripper_motor_slider_joint = 0
+r_gripper_r_finger_joint = 0
+r_gripper_r_finger_tip_joint = 0
+r_shoulder_lift_joint = 0.0179976
+r_shoulder_pan_joint = -1.5
+r_upper_arm_roll_joint = -0.00523819
+r_wrist_flex_joint = -0.744712
+r_wrist_roll_joint = -0.00100021
+torso_lift_joint = 0.21
+torso_lift_motor_screw_joint = 0
+world_joint/theta = 3.14
+world_joint/x = 1
+world_joint/y = 1.5
+.
+goal
+15
+link_constraint
+countertop.dishwasher_01
+r_wrist_roll_link
+xyz 0.702135 2.0682 0.415148
+rpy 2.12784 0.0603021 -2.934
+.
+link_constraint
+countertop.dishwasher_02
+r_wrist_roll_link
+xyz 0.545323 2.00906 0.492193
+rpy 2.12784 0.0603021 -2.934
+.
+link_constraint
+countertop.goal1
+
+xyz 0.861873 2.04858 1.14789
+rpy 2.12785 0.0603056 1.53891
+.
+link_constraint
+countertop.goal2
+
+xyz 0.855474 2.1545 0.977098
+rpy -0.97663 -0.0590601 1.60492
+.
+link_constraint
+countertop.left_shelf_01
+r_wrist_roll_link
+xyz 0.512852 1.19921 1.30871
+rpy -3.07586 0.0138534 -3.10692
+.
+link_constraint
+countertop.left_shelf_02
+r_wrist_roll_link
+xyz 0.422984 1.54366 1.28278
+rpy -3.07586 0.0138534 -3.10692
+.
+link_constraint
+countertop.right_counter_01
+r_wrist_roll_link
+xyz 0.730131 2.33243 0.880483
+rpy -0.00420249 -0.207735 3.08179
+.
+link_constraint
+countertop.right_counter_02
+r_wrist_roll_link
+xyz 0.453069 2.07765 0.853666
+rpy 0.00715627 -0.0169191 3.08307
+.
+link_constraint
+countertop.right_counter_03
+r_wrist_roll_link
+xyz 0.464231 1.98574 1.11831
+rpy -1.71549 -1.51159 1.41822
+.
+link_constraint
+countertop.right_counter_04
+r_wrist_roll_link
+xyz 0.25836 1.82864 0.879709
+rpy -1.65267 -1.4852 -0.139263
+.
+link_constraint
+countertop.right_shelf_01
+r_wrist_roll_link
+xyz 0.408494 2.0737 1.28379
+rpy -3.07586 0.0138534 -3.10692
+.
+link_constraint
+countertop.right_shelf_02
+r_wrist_roll_link
+xyz 0.39518 1.74163 1.26174
+rpy -3.07586 0.0138534 -3.10692
+.
+link_constraint
+countertop.sink_01
+r_wrist_roll_link
+xyz 0.357691 1.79729 0.713865
+rpy -1.65266 -1.4852 1.48265
+.
+link_constraint
+countertop.sink_02
+r_wrist_roll_link
+xyz 0.329559 1.46814 0.711692
+rpy -1.65266 -1.4852 1.48265
+.
+link_constraint
+countertop.sink_03
+r_wrist_roll_link
+xyz 0.281884 1.70631 0.795841
+rpy -3.07586 0.0138534 -3.10692
+.
