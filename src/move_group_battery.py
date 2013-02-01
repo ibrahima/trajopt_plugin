@@ -3,7 +3,9 @@
 import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument("scenefile")
+parser.add_argument("--planner-id", dest="planner_id", default="")
 args = parser.parse_args()
+
 import subprocess, os
 
 envfile = "/tmp/%s.xml"%os.path.basename(args.scenefile)
@@ -38,44 +40,48 @@ import openravepy as rave, numpy as np
 ROS_JOINT_NAMES = ['br_caster_rotation_joint', 'br_caster_l_wheel_joint', 'br_caster_r_wheel_joint', 'torso_lift_joint', 'head_pan_joint', 'head_tilt_joint', 'laser_tilt_mount_joint', 'r_shoulder_pan_joint', 'r_shoulder_lift_joint', 'r_upper_arm_roll_joint', 'r_elbow_flex_joint', 'r_forearm_roll_joint', 'r_wrist_flex_joint', 'r_wrist_roll_joint', 'r_gripper_motor_slider_joint', 'r_gripper_motor_screw_joint', 'r_gripper_l_finger_joint', 'r_gripper_l_finger_tip_joint', 'r_gripper_r_finger_joint', 'r_gripper_r_finger_tip_joint', 'r_gripper_joint', 'l_shoulder_pan_joint', 'l_shoulder_lift_joint', 'l_upper_arm_roll_joint', 'l_elbow_flex_joint', 'l_forearm_roll_joint', 'l_wrist_flex_joint', 'l_wrist_roll_joint', 'l_gripper_motor_slider_joint', 'l_gripper_motor_screw_joint', 'l_gripper_l_finger_joint', 'l_gripper_l_finger_tip_joint', 'l_gripper_r_finger_joint', 'l_gripper_r_finger_tip_joint', 'l_gripper_joint', 'torso_lift_motor_screw_joint', 'fl_caster_rotation_joint', 'fl_caster_l_wheel_joint', 'fl_caster_r_wheel_joint', 'fr_caster_rotation_joint', 'fr_caster_l_wheel_joint', 'fr_caster_r_wheel_joint', 'bl_caster_rotation_joint', 'bl_caster_l_wheel_joint', 'bl_caster_r_wheel_joint']
 ROS_DEFAULT_JOINT_VALS = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -0.657967, 0.888673, -1.4311, -1.073419, -0.705232, -1.107079, 2.806742, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.848628, 0.7797, 1.396294, -0.828274, 0.687905, -1.518703, 0.394348, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 
-
-def build_joint_request(jvals, arm, robot):
-    m = MotionPlanRequest()    
-    m.group_name = "%s_arm" % arm
-    m.start_state.joint_state.name = ROS_JOINT_NAMES
-    m.start_state.joint_state.position = ROS_DEFAULT_JOINT_VALS
-    m.start_state.multi_dof_joint_state.joint_names =  ['world_joint']
-    m.start_state.multi_dof_joint_state.frame_ids = ['odom_combined']
-    m.start_state.multi_dof_joint_state.child_frame_ids = ['base_footprint']
+def alter_robot_state(robot_state, joints, values):
+    d = dict(zip(robot_state.joint_state.name, robot_state.joint_state.position))
+    for joint_name, value in zip(joints, values):
+        d[joint_name] = value
+    unzipped = zip(*d)
+    robot_state.joint_state.name = unzipped[0]
+    robot_state.joint_state.position = unzipped[1]
+    
+def build_robot_state(joint_names=ROS_JOINT_NAMES, joint_values=ROS_DEFAULT_JOINT_VALS):
+    start_state = RobotState()
+    start_state.joint_state.name = joint_names
+    start_state.joint_state.position = joint_values
+    start_state.multi_dof_joint_state.joint_names =  ['world_joint']
+    start_state.multi_dof_joint_state.frame_ids = ['odom_combined']
+    start_state.multi_dof_joint_state.child_frame_ids = ['base_footprint']
     base_pose = Pose()
     base_pose.orientation.w = 1
-    m.start_state.multi_dof_joint_state.poses = [ base_pose ]
-    
-    
+    start_state.multi_dof_joint_state.poses = [ base_pose ]
+    return start_state
+
+def build_joint_request(jvals, arm, robot, initial_state=build_robot_state(), planner_id=''):
+    m = MotionPlanRequest()
+    m.group_name = "%s_arm" % arm
+    m.start_state = initial_state
+    m.planner_id = planner_id
     c = Constraints()
     joints = robot.GetJoints()
     joint_inds = robot.GetManipulator("%sarm"%arm).GetArmIndices()
     c.joint_constraints = [JointConstraint(joint_name=joints[joint_inds[i]].GetName(), position = jvals[i])
                            for i in xrange(len(jvals))]
     jc = JointConstraint()
-                                          
+
     m.goal_constraints = [c]
     return m
     
 
-def build_cart_request(pos, quat, arm):
+def build_cart_request(pos, quat, arm, initial_state = build_robot_state(), planner_id=''):
     m = MotionPlanRequest()
     m.group_name = "%s_arm" % arm
     target_link = "%s_wrist_roll_link" % arm[0]
-    m.start_state.joint_state.name = ROS_JOINT_NAMES
-    m.start_state.joint_state.position = ROS_DEFAULT_JOINT_VALS
-
-    m.start_state.multi_dof_joint_state.joint_names =  ['world_joint']
-    m.start_state.multi_dof_joint_state.frame_ids = ['odom_combined']
-    m.start_state.multi_dof_joint_state.child_frame_ids = ['base_footprint']
-    base_pose = Pose()
-    base_pose.orientation.w = 1
-    m.start_state.multi_dof_joint_state.poses = [ base_pose ]
+    m.start_state = initial_state
+    m.planner_id = planner_id
 
     pc = PositionConstraint()
     pc.link_name = target_link
@@ -101,39 +107,52 @@ def build_cart_request(pos, quat, arm):
     
     return m
     
-def test_plan_to_pose(xyz, xyzw, leftright, robot):
+def robot_state_from_pose_goal(xyz, xyzw, arm, robot, initial_state = build_robot_state()):
+    manip = robot.GetManipulator(arm + "arm")
+    joint_solutions = ku.ik_for_link(rave.matrixFromPose(np.r_[xyzw[3], xyzw[:3], xyz]),
+                                     manip, "%s_gripper_tool_frame"%leftright[0], 1, True)
+    assert joint_solutions
+    joints = robot.GetJoints()
+    joint_inds = robot.GetManipulator("%sarm"%arm).GetArmIndices()
+    joint_names = [joints[joint_inds[i]].GetName() for i in xrange(len(joint_solutions[0]))]
+    joint_values = [joint_solutions[0][i] for i in xrange(len(joint_solutions[0]))]
+    new_state = alter_robot_state(initial_state, joint_names, joint_values)
+    return new_state
+
+def test_plan_to_pose(xyz, xyzw, leftright, robot, planner_id=''):
     manip = robot.GetManipulator(leftright + "arm")
 
     joint_solutions = ku.ik_for_link(rave.matrixFromPose(np.r_[xyzw[3], xyzw[:3], xyz]), manip, "%s_gripper_tool_frame"%leftright[0], 
                          1, True)
 
-
     if len(joint_solutions) == 0:
         print "pose is not reachable"
         return None
 
-    m = build_joint_request(joint_solutions[0], leftright, robot)
+    m = build_joint_request(joint_solutions[0], leftright, robot, planner_id=planner_id)
 
     t1 = time.time()
     t2 = time.time()
+    response = None
+    try:
+        response = get_motion_plan(m).motion_plan_response
+    except rospy.service.ServiceException:
+        pass
+    # assert isinstance(response, MotionPlanResponse)
 
-    response = get_motion_plan(m).motion_plan_response
-    assert isinstance(response, MotionPlanResponse)
-    traj =  [list(jtp.positions) for jtp in response.trajectory.joint_trajectory.points]
     if response is not None:
+        traj =  [list(jtp.positions) for jtp in response.trajectory.joint_trajectory.points]
         return dict(returned = True, safe = not has_collision(traj, manip), traj = traj, planning_time = response.planning_time)
     else:
-        raise dict(returned = False)
+        return dict(returned = False)
 
-    
 def update_rave_from_ros(robot, ros_values, ros_joint_names):
     inds_ros2rave = np.array([robot.GetJointIndex(name) for name in ros_joint_names])
     good_ros_inds = np.flatnonzero(inds_ros2rave != -1) # ros joints inds with matching rave joint
     rave_inds = inds_ros2rave[good_ros_inds] # openrave indices corresponding to those joints
     rave_values = [ros_values[i_ros] for i_ros in good_ros_inds]
     robot.SetJointValues(rave_values[:20],rave_inds[:20])
-    robot.SetJointValues(rave_values[20:],rave_inds[20:])   
-
+    robot.SetJointValues(rave_values[20:],rave_inds[20:])
     
 get_motion_plan = None
 env = None
@@ -147,19 +166,18 @@ def main():
     loadsuccess = env.Load(envfile)    
     assert loadsuccess
     
-    get_motion_plan = rospy.ServiceProxy('trajopt_planner', GetMotionPlan)    
-    print "waiting for trajopt_planner"
+    get_motion_plan = rospy.ServiceProxy('plan_kinematic_path', GetMotionPlan)    
+    print "waiting for plan_kinematic_path"
     get_motion_plan.wait_for_service()
     print "ok"
     
     robot = env.GetRobots()[0]
     update_rave_from_ros(robot, ROS_DEFAULT_JOINT_VALS, ROS_JOINT_NAMES)
-    
-
+  
     xs, ys, zs = np.mgrid[.35:.65:.05, 0:.5:.05, .8:.9:.1]
     results = []
     for (x,y,z) in zip(xs.flat, ys.flat, zs.flat):
-        result = test_plan_to_pose([x,y,z], [0,0,0,1], "left", robot)
+        result = test_plan_to_pose([x,y,z], [0,0,0,1], "left", robot, planner_id=args.planner_id)
         if result is not None: results.append(result)
         
     success_count, fail_count, no_answer_count = 0,0,0
