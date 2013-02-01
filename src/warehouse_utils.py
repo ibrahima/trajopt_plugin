@@ -33,7 +33,20 @@ class MoveitWarehouseDatabase(object):
         msg.deserialize(f.read())
         return msg
         
+    def get_messages(self, klass, son={}):
+        collection_name = self.collection_for_message(klass)
+        collection = self.db[collection_name]
+        entries = collection.find(son)
+        msgs = []
+        for entry in entries:
+            blob_id = entry['blob_id']
+            f = self.gridfs.get(blob_id)
+            msg = klass()
+            msg.deserialize(f.read())
+            msgs.append(msg)
+        return msgs
+
 if __name__ == "__main__":
     mwdb = MoveitWarehouseDatabase('moveit_robot_states')
-    msg = mwdb.get_message(RobotState, state_id="pr2_state_0000")
-    print msg
+    msg = mwdb.get_messages(RobotState, {'state_id':{'$regex':'^pr2\..*'}})
+    print len(msg)
