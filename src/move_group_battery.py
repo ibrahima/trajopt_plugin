@@ -75,11 +75,11 @@ def build_robot_state(joint_names=ROS_JOINT_NAMES, joint_values=ROS_DEFAULT_JOIN
     start_state.multi_dof_joint_state.poses = [ base_pose ]
     return start_state
 
-def build_joint_request(jvals, arm, robot, initial_state=build_robot_state()):
+def build_joint_request(jvals, arm, robot, initial_state=build_robot_state(), planner_id=''):
     m = MotionPlanRequest()
     m.group_name = "%s_arm" % arm
     m.start_state = initial_state
-        
+    m.planner_id = planner_id
     c = Constraints()
     joints = robot.GetJoints()
     joint_inds = robot.GetManipulator("%sarm"%arm).GetArmIndices()
@@ -91,11 +91,12 @@ def build_joint_request(jvals, arm, robot, initial_state=build_robot_state()):
     return m
     
 
-def build_cart_request(pos, quat, arm, initial_state = build_robot_state()):
+def build_cart_request(pos, quat, arm, initial_state = build_robot_state(), planner_id=''):
     m = MotionPlanRequest()
     m.group_name = "%s_arm" % arm
     target_link = "%s_wrist_roll_link" % arm[0]
     m.start_state = initial_state
+    m.planner_id = planner_id
 
     pc = PositionConstraint()
     pc.link_name = target_link
@@ -147,24 +148,26 @@ def test_plan_to_pose(xyz, xyzw, leftright, robot):
 
     t1 = time.time()
     t2 = time.time()
+    response = None
+    try:
+        response = get_motion_plan(m).motion_plan_response
+    except rospy.service.ServiceException:
+        pass
+    # assert isinstance(response, MotionPlanResponse)
 
-    response = get_motion_plan(m).motion_plan_response
-    assert isinstance(response, MotionPlanResponse)
-    traj =  [list(jtp.positions) for jtp in response.trajectory.joint_trajectory.points]
     if response is not None:
+        traj =  [list(jtp.positions) for jtp in response.trajectory.joint_trajectory.points]
         return dict(returned = True, safe = not has_collision(traj, manip), traj = traj, planning_time = response.planning_time)
     else:
-        raise dict(returned = False)
+        return dict(returned = False)
 
-    
 def update_rave_from_ros(robot, ros_values, ros_joint_names):
     inds_ros2rave = np.array([robot.GetJointIndex(name) for name in ros_joint_names])
     good_ros_inds = np.flatnonzero(inds_ros2rave != -1) # ros joints inds with matching rave joint
     rave_inds = inds_ros2rave[good_ros_inds] # openrave indices corresponding to those joints
     rave_values = [ros_values[i_ros] for i_ros in good_ros_inds]
     robot.SetJointValues(rave_values[:20],rave_inds[:20])
-    robot.SetJointValues(rave_values[20:],rave_inds[20:])   
-
+    robot.SetJointValues(rave_values[20:],rave_inds[20:])
     
 get_motion_plan = None
 env = None
