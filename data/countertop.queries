@@ -52,16 +52,22 @@ world_joint/x = 1
 world_joint/y = 1.5
 .
 goal
-15
+17
+link_constraint
+countertop.cupboard_01
+
+xyz 0.67251 1.20851 0.619106
+rpy 1.52349 0.00678076 -3.13347
+.
 link_constraint
 countertop.dishwasher_01
-r_wrist_roll_link
+
 xyz 0.702135 2.0682 0.415148
 rpy 2.12784 0.0603021 -2.934
 .
 link_constraint
 countertop.dishwasher_02
-r_wrist_roll_link
+
 xyz 0.545323 2.00906 0.492193
 rpy 2.12784 0.0603021 -2.934
 .
@@ -79,67 +85,73 @@ rpy -0.97663 -0.0590601 1.60492
 .
 link_constraint
 countertop.left_shelf_01
-r_wrist_roll_link
+
 xyz 0.512852 1.19921 1.30871
 rpy -3.07586 0.0138534 -3.10692
 .
 link_constraint
 countertop.left_shelf_02
-r_wrist_roll_link
-xyz 0.422984 1.54366 1.28278
-rpy -3.07586 0.0138534 -3.10692
+
+xyz 0.347768 1.54375 1.30236
+rpy 1.52349 0.00678078 -3.13347
 .
 link_constraint
 countertop.right_counter_01
-r_wrist_roll_link
+
 xyz 0.730131 2.33243 0.880483
 rpy -0.00420249 -0.207735 3.08179
 .
 link_constraint
 countertop.right_counter_02
-r_wrist_roll_link
+
 xyz 0.453069 2.07765 0.853666
 rpy 0.00715627 -0.0169191 3.08307
 .
 link_constraint
 countertop.right_counter_03
-r_wrist_roll_link
+
 xyz 0.464231 1.98574 1.11831
 rpy -1.71549 -1.51159 1.41822
 .
 link_constraint
 countertop.right_counter_04
-r_wrist_roll_link
+
 xyz 0.25836 1.82864 0.879709
 rpy -1.65267 -1.4852 -0.139263
 .
 link_constraint
+countertop.right_counter_05
+
+xyz 0.352615 2.07048 0.863042
+rpy 2.22888 0.664433 2.68524
+.
+link_constraint
 countertop.right_shelf_01
-r_wrist_roll_link
+
 xyz 0.408494 2.0737 1.28379
 rpy -3.07586 0.0138534 -3.10692
 .
 link_constraint
 countertop.right_shelf_02
-r_wrist_roll_link
-xyz 0.39518 1.74163 1.26174
-rpy -3.07586 0.0138534 -3.10692
+
+xyz 0.376167 1.71657 1.29442
+rpy 1.52349 0.00678075 -3.13347
 .
 link_constraint
 countertop.sink_01
-r_wrist_roll_link
+
 xyz 0.357691 1.79729 0.713865
 rpy -1.65266 -1.4852 1.48265
 .
 link_constraint
 countertop.sink_02
-r_wrist_roll_link
+
 xyz 0.329559 1.46814 0.711692
 rpy -1.65266 -1.4852 1.48265
 .
 link_constraint
 countertop.sink_03
-r_wrist_roll_link
+
 xyz 0.281884 1.70631 0.795841
 rpy -3.07586 0.0138534 -3.10692
 .
