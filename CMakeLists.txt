@@ -4,7 +4,7 @@ project(trajopt_plugin)
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(catkin REQUIRED COMPONENTS dynamic_reconfigure moveit_core moveit_ros_planning pluginlib roscpp tf genmsg)
+find_package(catkin REQUIRED COMPONENTS dynamic_reconfigure moveit_core moveit_ros_planning pluginlib roscpp tf)
 
 # Do something reasonably useful to find trajopt
 set(TRAJOPT_SOURCE_DIR "" CACHE STRING "Trajopt directory (e.g. ~/trajopt)")
@@ -44,24 +44,7 @@ include_directories( ${OpenRAVE_INCLUDE_DIRS})
 ## Declare ROS messages and services ##
 #######################################
 
-## Generate messages in the 'msg' folder
-# add_message_files(
-#   FILES
-#   Message1.msg
-#   Message2.msg
-# )
 
-## Generate services in the 'srv' folder
-add_service_files(
-   FILES
-   String2String.srv
-)
-
-## Generate added messages and services with any dependencies listed here
-generate_messages(
-   DEPENDENCIES
-   std_msgs  # Or other packages containing msgs
-)
 
 ###################################################
 ## Declare things to be passed to other projects ##
@@ -111,18 +94,6 @@ target_link_libraries(moveit_trajopt_planner_plugin
   ${OpenRAVE_CORE_LIBRARIES}
   trajopt
   )
-
-add_executable(traj_verifier src/traj_verifier.cpp)
-target_link_libraries(traj_verifier
-	${MOVEIT_LIB_NAME}
-	${catkin_LIBRARIES}
-	${OpenRAVE_LIBRARIES}
-	${OpenRAVE_CORE_LIBRARIES}
-	trajopt
-	json
-	osgviewer
-	boost_python
-)
 
 ## Add dependencies to the executable
 # add_dependencies(trajopt_plugin_node ${PROJECT_NAME})

@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument("scenefile")
@@ -10,6 +12,7 @@ sys.path.append("/home/ibrahima/moveit/devel/lib/python2.7/dist-packages")
 
 
 import subprocess, os
+from time import time
 import trajoptpy
 import rospy
 import json
@@ -104,8 +107,10 @@ def callback(getreq):
         
         trajoptpy.SetInteractive(args.interactive)
         s = json.dumps(d)
+        t_start = time()
         prob = trajoptpy.ConstructProblem(s, env)
         result = trajoptpy.OptimizeProblem(prob)
+        planning_duration_seconds = time() - t_start
 
     resp.trajectory.joint_trajectory.joint_names = names
     for row in result.GetTraj():
@@ -137,7 +142,7 @@ def callback(getreq):
     #mdjt.joint_names.append("world_joint")
 
     resp.error_code.val = 1
-    resp.planning_time = rospy.Duration(0)
+    resp.planning_time = rospy.Duration(planning_duration_seconds)
     resp.trajectory.joint_trajectory.header = req.start_state.joint_state.header
     resp.group_name = req.group_name
     resp.trajectory_start.joint_state = req.start_state.joint_state

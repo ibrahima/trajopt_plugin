@@ -17,6 +17,7 @@ sys.path.append("/home/ibrahima/moveit/devel/lib/python2.7/dist-packages")
 import rospy
 
 from moveit_msgs.msg import *
+from moveit_msgs.srv import *
 from geometry_msgs.msg import *
 from shape_msgs.msg import *
 from trajopt_plugin.srv import *
@@ -55,16 +56,16 @@ def has_collision(traj, manip):
     return collision
 
 def build_joint_request(jvals, arm, robot):
-    m = MoveGroupGoal()
-    m.request.group_name = "%s_arm" % arm
-    m.request.start_state.joint_state.name = ROS_JOINT_NAMES
-    m.request.start_state.joint_state.position = ROS_DEFAULT_JOINT_VALS
-    m.request.start_state.multi_dof_joint_state.joint_names =  ['world_joint']
-    m.request.start_state.multi_dof_joint_state.frame_ids = ['odom_combined']
-    m.request.start_state.multi_dof_joint_state.child_frame_ids = ['base_footprint']
+    m = MotionPlanRequest()    
+    m.group_name = "%s_arm" % arm
+    m.start_state.joint_state.name = ROS_JOINT_NAMES
+    m.start_state.joint_state.position = ROS_DEFAULT_JOINT_VALS
+    m.start_state.multi_dof_joint_state.joint_names =  ['world_joint']
+    m.start_state.multi_dof_joint_state.frame_ids = ['odom_combined']
+    m.start_state.multi_dof_joint_state.child_frame_ids = ['base_footprint']
     base_pose = Pose()
     base_pose.orientation.w = 1
-    m.request.start_state.multi_dof_joint_state.poses = [ base_pose ]
+    m.start_state.multi_dof_joint_state.poses = [ base_pose ]
     
     
     c = Constraints()
@@ -74,23 +75,23 @@ def build_joint_request(jvals, arm, robot):
                            for i in xrange(len(jvals))]
     jc = JointConstraint()
                                           
-    m.request.goal_constraints = [c]
+    m.goal_constraints = [c]
     return m
     
 
-def build_motion_plan_request(pos, quat, arm):
-    m = MoveGroupGoal()
-    m.request.group_name = "%s_arm" % arm
+def build_cart_request(pos, quat, arm):
+    m = MotionPlanRequest()
+    m.group_name = "%s_arm" % arm
     target_link = "%s_wrist_roll_link" % arm[0]
-    m.request.start_state.joint_state.name = ROS_JOINT_NAMES
-    m.request.start_state.joint_state.position = ROS_DEFAULT_JOINT_VALS
+    m.start_state.joint_state.name = ROS_JOINT_NAMES
+    m.start_state.joint_state.position = ROS_DEFAULT_JOINT_VALS
 
-    m.request.start_state.multi_dof_joint_state.joint_names =  ['world_joint']
-    m.request.start_state.multi_dof_joint_state.frame_ids = ['odom_combined']
-    m.request.start_state.multi_dof_joint_state.child_frame_ids = ['base_footprint']
+    m.start_state.multi_dof_joint_state.joint_names =  ['world_joint']
+    m.start_state.multi_dof_joint_state.frame_ids = ['odom_combined']
+    m.start_state.multi_dof_joint_state.child_frame_ids = ['base_footprint']
     base_pose = Pose()
     base_pose.orientation.w = 1
-    m.request.start_state.multi_dof_joint_state.poses = [ base_pose ]
+    m.start_state.multi_dof_joint_state.poses = [ base_pose ]
 
     pc = PositionConstraint()
     pc.link_name = target_link
@@ -112,75 +113,34 @@ def build_motion_plan_request(pos, quat, arm):
     c = Constraints()
     c.position_constraints = [ pc ]
     c.orientation_constraints = [ oc ]
-    m.request.goal_constraints = [ c ]
+    m.goal_constraints = [ c ]
     
     return m
-
-def test_grid(center_point, x_range=0.1, y_range=0.2, z_range=0.2, dx=0.05, dy=0.05, dz=0.05):
-    client = actionlib.SimpleActionClient('move_group', MoveGroupAction)
-    
-    print "Waiting for server"
-    client.wait_for_server()
-    print "Connected to actionserver"
-
-    for xp in np.arange(center_point.x - x_range, center_point.x + x_range, dx):
-        for yp in np.arange(center_point.y - y_range, center_point.y + y_range, dy):
-            for zp in np.arange(center_point.z - z_range, center_point.z + z_range, dz):
-                p = Point()
-                p.x = xp
-                p.y = yp
-                p.z = zp
-                print "Sending planning request to point", p
-                q = Quaternion() # TODO: Configure orientation
-                q.w = 1
-                m = build_motion_plan_request(p, q)
-                client.send_goal(m)
-                t1 = time.time()
-                client.wait_for_result()
-                t2 = time.time()
-                result = client.get_result()
-                print "Motion planning request took", (t2-t1), "seconds"
-                
-                if m.request.group_name == "right_arm": manipname = "rightarm"
-                elif m.request.group_name == "left_arm": manipname = "leftarm"
-                else: raise Exception("invalid group name")
-
-
-
-
-                if rospy.is_shutdown(): return
-    
     
 def test_plan_to_pose(xyz, xyzw, leftright, robot):
     manip = robot.GetManipulator(leftright + "arm")
-    client = actionlib.SimpleActionClient('move_group', MoveGroupAction)    
-    #print "Waiting for server"
-    #client.wait_for_server()
-    #rospy.sleep(.2)
-    #print "Connected to actionserver"
 
     joint_solutions = ku.ik_for_link(rave.matrixFromPose(np.r_[xyzw[3], xyzw[:3], xyz]), manip, "%s_gripper_tool_frame"%leftright[0], 
                          1, True)
 
 
     if len(joint_solutions) == 0:
-        print "no solutions for pose"
+        print "pose is not reachable"
         return None
-    #m = build_motion_plan_request(p, q, leftright)
+
     m = build_joint_request(joint_solutions[0], leftright, robot)
-    #print "request", m
-    client.send_goal(m)
+
     t1 = time.time()
-    client.wait_for_result()
     t2 = time.time()
-    result = client.get_result()    
-    traj =  [list(jtp.positions) for jtp in result.planned_trajectory.joint_trajectory.points]
-    if result is not None:
-        return dict(returned = True, safe = not has_collision(traj, manip), traj = traj)
+
+    response = get_motion_plan(m).motion_plan_response
+    assert isinstance(response, MotionPlanResponse)
+    traj =  [list(jtp.positions) for jtp in response.trajectory.joint_trajectory.points]
+    if response is not None:
+        return dict(returned = True, safe = not has_collision(traj, manip), traj = traj, planning_time = response.planning_time)
     else:
         raise dict(returned = False)
 
-    res = MoveGroupActionResult()
     
 def update_rave_from_ros(robot, ros_values, ros_joint_names):
     inds_ros2rave = np.array([robot.GetJointIndex(name) for name in ros_joint_names])
@@ -191,19 +151,22 @@ def update_rave_from_ros(robot, ros_values, ros_joint_names):
     robot.SetJointValues(rave_values[20:],rave_inds[20:])   
 
     
-if __name__ == "__main__":        
+get_motion_plan = None
+env = None
+    
+def main():
+    global get_motion_plan, env, robot
     if rospy.get_name() == "/unnamed":
-        rospy.init_node("foobar")
+        rospy.init_node("move_group_battery")
     env = rave.Environment()
     env.Load("robots/pr2-beta-static.zae")
     loadsuccess = env.Load(envfile)    
     assert loadsuccess
     
-    client = actionlib.SimpleActionClient('move_group', MoveGroupAction)    
-    print "Waiting for server"
-    client.wait_for_server()
-    print "Connected to actionserver"
-    
+    get_motion_plan = rospy.ServiceProxy('trajopt_planner', GetMotionPlan)    
+    print "waiting for trajopt_planner"
+    get_motion_plan.wait_for_service()
+    print "ok"
     
     robot = env.GetRobots()[0]
     update_rave_from_ros(robot, ROS_DEFAULT_JOINT_VALS, ROS_JOINT_NAMES)
@@ -225,4 +188,5 @@ if __name__ == "__main__":
     print "success count:", success_count
     print "fail count:", fail_count
     print "no answer count:", no_answer_count
-            
+
+main()

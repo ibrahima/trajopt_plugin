@@ -217,9 +217,9 @@ bool TrajoptInterfaceROS::solve(const planning_scene::PlanningSceneConstPtr& pla
 
   ROS_INFO("Optimization took %f sec to create", (ros::WallTime::now() - create_time).toSec());
 
-  ros::WallTime before_opt_time = ros::WallTime::now();
+  ros::Time before_opt_time = ros::Time::now();
   opt.optimize();
-  ros::WallDuration optduration = ros::WallTime::now() - before_opt_time;
+  ros::Duration optduration = ros::Time::now() - before_opt_time;
   ROS_INFO("Optimization actually took %f sec to run", (optduration).toSec());
 
   create_time = ros::WallTime::now();
@@ -227,6 +227,7 @@ bool TrajoptInterfaceROS::solve(const planning_scene::PlanningSceneConstPtr& pla
   // assume that the trajectory is now optimized, fill in the output structure:
   res.group_name = req.group_name;
   res.trajectory_start = req.start_state;
+  res.planning_time = optduration;
   trajopt::TrajArray finalTraj = trajopt::getTraj(opt.x(), prob->GetVars());
   // fill in joint names:
   // TODO: May need to make sure that joint names are in the same order
