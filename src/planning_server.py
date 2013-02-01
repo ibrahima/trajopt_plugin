@@ -66,6 +66,11 @@ def callback(getreq):
     manip = GROUPMAP[req.group_name]
     
     update_rave_from_ros(robot, req.start_state.joint_state.position, req.start_state.joint_state.name)
+    base_pose = req.start_state.multi_dof_joint_state.poses[0]
+    base_q = base_pose.orientation
+    base_p = base_pose.position
+    t = rave.matrixFromPose([base_q.w, base_q.x, base_q.y, base_q.z, base_p.x, base_p.y, base_p.z])
+    robot.SetTransform(t)
     start_joints = robot.GetDOFValues(robot.GetManipulator(manip).GetArmIndices())
     
     n_steps = 9
