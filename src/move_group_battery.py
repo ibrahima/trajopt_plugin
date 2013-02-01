@@ -25,6 +25,8 @@ from trajopt_plugin.srv import *
 import trajoptpy.math_utils as mu
 import trajoptpy.kin_utils as ku
 
+from check_traj import check_traj
+
 import actionlib
 
 import time
@@ -33,27 +35,9 @@ import json
 import openravepy as rave, numpy as np
 
 
-
 ROS_JOINT_NAMES = ['br_caster_rotation_joint', 'br_caster_l_wheel_joint', 'br_caster_r_wheel_joint', 'torso_lift_joint', 'head_pan_joint', 'head_tilt_joint', 'laser_tilt_mount_joint', 'r_shoulder_pan_joint', 'r_shoulder_lift_joint', 'r_upper_arm_roll_joint', 'r_elbow_flex_joint', 'r_forearm_roll_joint', 'r_wrist_flex_joint', 'r_wrist_roll_joint', 'r_gripper_motor_slider_joint', 'r_gripper_motor_screw_joint', 'r_gripper_l_finger_joint', 'r_gripper_l_finger_tip_joint', 'r_gripper_r_finger_joint', 'r_gripper_r_finger_tip_joint', 'r_gripper_joint', 'l_shoulder_pan_joint', 'l_shoulder_lift_joint', 'l_upper_arm_roll_joint', 'l_elbow_flex_joint', 'l_forearm_roll_joint', 'l_wrist_flex_joint', 'l_wrist_roll_joint', 'l_gripper_motor_slider_joint', 'l_gripper_motor_screw_joint', 'l_gripper_l_finger_joint', 'l_gripper_l_finger_tip_joint', 'l_gripper_r_finger_joint', 'l_gripper_r_finger_tip_joint', 'l_gripper_joint', 'torso_lift_motor_screw_joint', 'fl_caster_rotation_joint', 'fl_caster_l_wheel_joint', 'fl_caster_r_wheel_joint', 'fr_caster_rotation_joint', 'fr_caster_l_wheel_joint', 'fr_caster_r_wheel_joint', 'bl_caster_rotation_joint', 'bl_caster_l_wheel_joint', 'bl_caster_r_wheel_joint']
 ROS_DEFAULT_JOINT_VALS = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -0.657967, 0.888673, -1.4311, -1.073419, -0.705232, -1.107079, 2.806742, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.848628, 0.7797, 1.396294, -0.828274, 0.687905, -1.518703, 0.394348, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 
-def has_collision(traj, manip):
-    traj_up = mu.interp2d(np.linspace(0,1,100), np.linspace(0,1,len(traj)), traj)
-    robot = manip.GetRobot()
-    ss = rave.RobotStateSaver(robot)
-    arm_inds = manip.GetArmIndices()
-    env = robot.GetEnv()
-    collision = False
-    col_times = []
-    for (i,row) in enumerate(traj_up):
-        robot.SetDOFValues(row, arm_inds)
-        col_now = env.CheckCollision(robot)
-        if col_now: 
-            collision = True
-            col_times.append(i)
-    if col_times: print "collision at timesteps", col_times      
-    else: print "no collisions"
-    return collision
 
 def build_joint_request(jvals, arm, robot):
     m = MotionPlanRequest()    
