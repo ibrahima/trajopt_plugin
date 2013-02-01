@@ -151,14 +151,24 @@ def test_grid(center_point, x_range=0.1, y_range=0.2, z_range=0.2, dx=0.05, dy=0
 
                 if rospy.is_shutdown(): return
     
-    
+def robot_state_from_pose_goal(xyz, xyzw, arm, robot, initial_state = build_robot_state()):
+    manip = robot.GetManipulator(arm + "arm")
+    joint_solutions = ku.ik_for_link(rave.matrixFromPose(np.r_[xyzw[3], xyzw[:3], xyz]),
+                                     manip, "%s_gripper_tool_frame"%leftright[0], 1, True)
+    assert joint_solutions
+    joints = robot.GetJoints()
+    joint_inds = robot.GetManipulator("%sarm"%arm).GetArmIndices()
+    joint_names = [joints[joint_inds[i]].GetName() for i in xrange(len(joint_solutions[0]))]
+    joint_values = [joint_solutions[0][i] for i in xrange(len(joint_solutions[0]))]
+    new_state = alter_robot_state(initial_state, joint_names, joint_values)
+    return new_state
+
 def test_plan_to_pose(xyz, xyzw, leftright, robot):
     manip = robot.GetManipulator(leftright + "arm")
     client = actionlib.SimpleActionClient('move_group', MoveGroupAction)    
 
     joint_solutions = ku.ik_for_link(rave.matrixFromPose(np.r_[xyzw[3], xyzw[:3], xyz]), manip, "%s_gripper_tool_frame"%leftright[0], 
                          1, True)
-
 
     if len(joint_solutions) == 0:
         print "no solutions for pose"
