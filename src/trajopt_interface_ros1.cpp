@@ -13,13 +13,19 @@ using namespace moveit_msgs;
 namespace trajopt_interface_ros
 {
 
-TrajoptInterfaceROS::TrajoptInterfaceROS(const kinematic_model::KinematicModelConstPtr& kmodel)
+TrajoptInterfaceROS::TrajoptInterfaceROS(const kinematic_model::KinematicModelConstPtr& kmodel) :
+    nh_("~")
 {
-  int argc=1;
-  char* argv[] = {"asdf"};
-  ros::init(argc, argv, "asdf");
-  nh_ = ros::NodeHandle("~");
-  planner_ = nh_.serviceClient<moveit_msgs::GetMotionPlan>("trajopt_planner");
+  cout << "ros ok? " << ros::ok() << endl;
+  cout << "ros isInititialized? " << ros::isInitialized() << endl;
+//  int argc=1;
+//  char* argv[] = {"asdf"};
+//  ros::init(argc, argv, "asdf");
+//  cout << "ros ok? " << ros::ok() << endl;
+//  sleep(.2);
+  planner_ = nh_.serviceClient<moveit_msgs::GetMotionPlan>("/trajopt_planner");
+  bool waitSuccess = planner_.waitForExistence(ros::Duration(.2));
+
 }
 
 TrajoptInterfaceROS::~TrajoptInterfaceROS()
@@ -35,9 +41,12 @@ bool TrajoptInterfaceROS::solve(const planning_scene::PlanningSceneConstPtr& pla
   req1.motion_plan_request = const_cast<moveit_msgs::MotionPlanRequest&>(req);
   GetMotionPlanResponse resp1;
   try {
-    const_cast<TrajoptInterfaceROS*>(this)->planner_.call(req1, resp1);
+    bool callResult = const_cast<TrajoptInterfaceROS*>(this)->planner_.call(req1, resp1);
+    if (!callResult) {
+      ROS_ERROR("service call failed");
+      return false;
+    }
     res = resp1.motion_plan_response;
-    cout << res << endl;
     ROS_INFO("done");
     return true;
   }

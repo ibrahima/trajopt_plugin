@@ -59,7 +59,8 @@ def has_collision(traj, manip):
         if col_now: 
             collision = True
             col_times.append(i)
-    if col_times: print "collision at timesteps", col_times            
+    if col_times: print "collision at timesteps", col_times      
+    else: print "no collisions"
     return collision
 
 def build_robot_state(joint_names=ROS_JOINT_NAMES, joint_values=ROS_DEFAULT_JOINT_VALS):
@@ -75,9 +76,9 @@ def build_robot_state(joint_names=ROS_JOINT_NAMES, joint_values=ROS_DEFAULT_JOIN
     return start_state
 
 def build_joint_request(jvals, arm, robot, initial_state=build_robot_state()):
-    m = MoveGroupGoal()
-    m.request.group_name = "%s_arm" % arm
-    m.request.start_state = initial_state
+    m = MotionPlanRequest()
+    m.group_name = "%s_arm" % arm
+    m.start_state = initial_state
         
     c = Constraints()
     joints = robot.GetJoints()
@@ -86,15 +87,15 @@ def build_joint_request(jvals, arm, robot, initial_state=build_robot_state()):
                            for i in xrange(len(jvals))]
     jc = JointConstraint()
 
-    m.request.goal_constraints = [c]
+    m.goal_constraints = [c]
     return m
     
 
-def build_motion_plan_request(pos, quat, arm, initial_state = build_robot_state()):
-    m = MoveGroupGoal()
-    m.request.group_name = "%s_arm" % arm
+def build_cart_request(pos, quat, arm, initial_state = build_robot_state()):
+    m = MotionPlanRequest()
+    m.group_name = "%s_arm" % arm
     target_link = "%s_wrist_roll_link" % arm[0]
-    m.request.start_state = initial_state
+    m.start_state = initial_state
 
     pc = PositionConstraint()
     pc.link_name = target_link
@@ -116,40 +117,9 @@ def build_motion_plan_request(pos, quat, arm, initial_state = build_robot_state(
     c = Constraints()
     c.position_constraints = [ pc ]
     c.orientation_constraints = [ oc ]
-    m.request.goal_constraints = [ c ]
+    m.goal_constraints = [ c ]
     
     return m
-
-def test_grid(center_point, x_range=0.1, y_range=0.2, z_range=0.2, dx=0.05, dy=0.05, dz=0.05):
-    client = actionlib.SimpleActionClient('move_group', MoveGroupAction)
-    
-    print "Waiting for server"
-    client.wait_for_server()
-    print "Connected to actionserver"
-
-    for xp in np.arange(center_point.x - x_range, center_point.x + x_range, dx):
-        for yp in np.arange(center_point.y - y_range, center_point.y + y_range, dy):
-            for zp in np.arange(center_point.z - z_range, center_point.z + z_range, dz):
-                p = Point()
-                p.x = xp
-                p.y = yp
-                p.z = zp
-                print "Sending planning request to point", p
-                q = Quaternion() # TODO: Configure orientation
-                q.w = 1
-                m = build_motion_plan_request(p, q)
-                client.send_goal(m)
-                t1 = time.time()
-                client.wait_for_result()
-                t2 = time.time()
-                result = client.get_result()
-                print "Motion planning request took", (t2-t1), "seconds"
-                
-                if m.request.group_name == "right_arm": manipname = "rightarm"
-                elif m.request.group_name == "left_arm": manipname = "leftarm"
-                else: raise Exception("invalid group name")
-
-                if rospy.is_shutdown(): return
     
 def robot_state_from_pose_goal(xyz, xyzw, arm, robot, initial_state = build_robot_state()):
     manip = robot.GetManipulator(arm + "arm")
@@ -165,29 +135,27 @@ def robot_state_from_pose_goal(xyz, xyzw, arm, robot, initial_state = build_robo
 
 def test_plan_to_pose(xyz, xyzw, leftright, robot):
     manip = robot.GetManipulator(leftright + "arm")
-    client = actionlib.SimpleActionClient('move_group', MoveGroupAction)    
 
     joint_solutions = ku.ik_for_link(rave.matrixFromPose(np.r_[xyzw[3], xyzw[:3], xyz]), manip, "%s_gripper_tool_frame"%leftright[0], 
                          1, True)
 
     if len(joint_solutions) == 0:
-        print "no solutions for pose"
+        print "pose is not reachable"
         return None
-    #m = build_motion_plan_request(p, q, leftright)
-    m = build_joint_request(joint_solutions[0], leftright, robot)
-    #print "request", m
 
-    get_motion_plan = rospy.ServiceProxy('plan_kinematic_path', GetMotionPlan)
+    m = build_joint_request(joint_solutions[0], leftright, robot)
+
     t1 = time.time()
-    response = get_motion_plan(m.request).motion_plan_response
     t2 = time.time()
 
-    print response.planning_time.to_sec()
+    response = get_motion_plan(m).motion_plan_response
+    assert isinstance(response, MotionPlanResponse)
     traj =  [list(jtp.positions) for jtp in response.trajectory.joint_trajectory.points]
     if response is not None:
-        return not has_collision(traj, manip)
+        return dict(returned = True, safe = not has_collision(traj, manip), traj = traj, planning_time = response.planning_time)
     else:
-        raise Exception("no response from planner")
+        raise dict(returned = False)
+
     
 def update_rave_from_ros(robot, ros_values, ros_joint_names):
     inds_ros2rave = np.array([robot.GetJointIndex(name) for name in ros_joint_names])
@@ -196,26 +164,44 @@ def update_rave_from_ros(robot, ros_values, ros_joint_names):
     rave_values = [ros_values[i_ros] for i_ros in good_ros_inds]
     robot.SetJointValues(rave_values[:20],rave_inds[:20])
     robot.SetJointValues(rave_values[20:],rave_inds[20:])   
+
     
-if __name__ == "__main__":        
+get_motion_plan = None
+env = None
+    
+def main():
+    global get_motion_plan, env, robot
     if rospy.get_name() == "/unnamed":
-        rospy.init_node("foobar")
+        rospy.init_node("move_group_battery")
     env = rave.Environment()
     env.Load("robots/pr2-beta-static.zae")
     loadsuccess = env.Load(envfile)    
     assert loadsuccess
     
-    client = actionlib.SimpleActionClient('move_group', MoveGroupAction)    
-    print "Waiting for server"
-    client.wait_for_server()
-    print "Connected to actionserver"
-        
+    get_motion_plan = rospy.ServiceProxy('trajopt_planner', GetMotionPlan)    
+    print "waiting for trajopt_planner"
+    get_motion_plan.wait_for_service()
+    print "ok"
+    
     robot = env.GetRobots()[0]
     update_rave_from_ros(robot, ROS_DEFAULT_JOINT_VALS, ROS_JOINT_NAMES)
     
-    xs, ys, zs = np.mgrid[.35:.85:.05, 0:.5:.05, .8:.9:.1]
+
+    xs, ys, zs = np.mgrid[.35:.65:.05, 0:.5:.05, .8:.9:.1]
     results = []
     for (x,y,z) in zip(xs.flat, ys.flat, zs.flat):
         result = test_plan_to_pose([x,y,z], [0,0,0,1], "left", robot)
-        print result
         if result is not None: results.append(result)
+        
+    success_count, fail_count, no_answer_count = 0,0,0
+    for result in results:
+        if result["returned"]:
+            if result["safe"]: success_count += 1
+            else: fail_count += 1
+        else:
+            no_answer_count += 1
+    print "success count:", success_count
+    print "fail count:", fail_count
+    print "no answer count:", no_answer_count
+
+main()

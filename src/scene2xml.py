@@ -9,13 +9,11 @@ def scene2xml(s):
   title = it.next()
   while True:    
     name = it.next()
-    print "name", name
     if name == ".": break
     out += """<KinBody name="%s">\n"""%name.split()[1]
     out += """<Body type="static">\n"""
     geomcount = it.next()
     geomtype = it.next()
-    print "geomtype",geomtype
     assert geomtype == "box"
     out += """<Geom type="%s">\n"""%geomtype
     extents = map(float, it.next().split())

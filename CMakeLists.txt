@@ -7,24 +7,28 @@ project(trajopt_plugin)
 find_package(catkin REQUIRED COMPONENTS dynamic_reconfigure moveit_core moveit_ros_planning pluginlib roscpp tf genmsg)
 
 # Do something reasonably useful to find trajopt
-set(TRAJOPT_HOME "" CACHE STRING "Trajopt directory (e.g. ~/trajopt)")
-if ("${TRAJOPT_HOME}" STREQUAL "")
-  message(STATUS "Attempting to find trajopt")
-  find_path(problem_description src/trajopt/problem_description.hpp PATHS ~/research/trajopt ~/trajopt )
-  string(FIND ${problem_description} "src/trajopt" pathend REVERSE)
-  string(SUBSTRING ${problem_description} 0 ${pathend} TRAJOPT_HOME)
-  message("Trajopt path: ${TRAJOPT_HOME}")
+set(TRAJOPT_SOURCE_DIR "" CACHE STRING "Trajopt directory (e.g. ~/trajopt)")
+set(TRAJOPT_BUILD_DIR "" CACHE STRING "Trajopt build directory (e.g. ~/build/trajopt)")
+if ("${TRAJOPT_SOURCE_DIR}" STREQUAL "")
+  # message(STATUS "Attempting to find trajopt")
+  # find_path(problem_description src/trajopt/problem_description.hpp PATHS ~/research/trajopt ~/trajopt ~/Proj)
+  # string(FIND ${problem_description} "src/trajopt" pathend REVERSE)
+  # string(SUBSTRING ${problem_description} 0 ${pathend} TRAJOPT_SOURCE_DIR)
+  # message("Trajopt path: ${TRAJOPT_SOURCE_DIR}")
+  message(FATAL_ERROR "Specify trajopt source dir and build dir")
 else()
-  message(STATUS "Using trajopt from ${TRAJOPT_HOME}")
+  message(STATUS "Using trajopt from ${TRAJOPT_SOURCE_DIR}")
 endif()
 
 # Hardcode trajopt paths for now
-include_directories("${TRAJOPT_HOME}/src")
-include_directories("${TRAJOPT_HOME}/ext/json/include")
-include_directories("${TRAJOPT_HOME}/ext/gtest/include")
-include_directories("${TRAJOPT_HOME}/ext/bullet/src")
+include_directories("${TRAJOPT_SOURCE_DIR}/src")
+include_directories("${TRAJOPT_SOURCE_DIR}/ext/json/include")
+include_directories("${TRAJOPT_SOURCE_DIR}/ext/gtest/include")
+include_directories("${TRAJOPT_SOURCE_DIR}/ext/bullet/src")
 
-link_directories("${TRAJOPT_HOME}/build/lib")
+include_directories("/home/joschu/ros/moveit/devel/include")
+
+link_directories("${TRAJOPT_BUILD_DIR}/lib")
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -40,21 +44,7 @@ include_directories( ${OpenRAVE_INCLUDE_DIRS})
 ## Declare ROS messages and services ##
 #######################################
 
-## Generate messages in the 'msg' folder
-# add_message_files(
-#   FILES
-#   Message1.msg
-#   Message2.msg
-# )
 
-## Generate services in the 'srv' folder
-add_service_files(
-  DIRECTORY srv
-)
-
-generate_messages(
-  DEPENDENCIES
-  std_msgs)
 
 ###################################################
 ## Declare things to be passed to other projects ##
@@ -88,7 +78,7 @@ include_directories(include
 
 set(MOVEIT_LIB_NAME moveit_trajopt_interface_ros)
 
-add_library(${MOVEIT_LIB_NAME} src/trajopt_interface_ros.cpp src/ros_rave_conversions.cpp)
+add_library(${MOVEIT_LIB_NAME} src/trajopt_interface_ros1.cpp src/ros_rave_conversions.cpp)
 target_link_libraries(${MOVEIT_LIB_NAME}
   ${catkin_LIBRARIES}
   trajopt
