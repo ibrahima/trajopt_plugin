@@ -26,6 +26,7 @@ import geometry_msgs.msg as gm
 from check_traj import check_traj
 
 FAILURE = -1
+SUCCESS = 1
 
 GROUPMAP = {
     "left_arm":"leftarm",
@@ -151,13 +152,14 @@ def callback(getreq):
         traj = result.GetTraj()
         
         if check_traj(traj, robot.GetManipulator(manip)):                       
-            print "aw, there's a collision. trying again"
+            print "aw, there's a collision"
         else:
             print "no collisions"
             success = True
             break
     if not success:
-        resp.error_code = FAILURE
+        resp.error_code.val = FAILURE
+        return resp
 
     resp.trajectory.joint_trajectory.joint_names = names
     for row in traj:
@@ -188,7 +190,7 @@ def callback(getreq):
     #mdjt.header.frame_id = req.start_state.joint_state.header.frame_id
     #mdjt.joint_names.append("world_joint")
 
-    resp.error_code.val = 1
+    resp.error_code.val = SUCCESS
     resp.planning_time = rospy.Duration(planning_duration_seconds)
     resp.trajectory.joint_trajectory.header = req.start_state.joint_state.header
     resp.group_name = req.group_name
@@ -211,5 +213,5 @@ if __name__ == "__main__":
     env.Load(envfile)
     robot = env.GetRobots()[0]
     
-    svc = rospy.Service('plan_kinematic_path', ms.GetMotionPlan, callback)
+    svc = rospy.Service('/plan_kinematic_path', ms.GetMotionPlan, callback)
     rospy.spin()

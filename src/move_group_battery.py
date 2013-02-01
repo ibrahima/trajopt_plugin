@@ -4,6 +4,8 @@ import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument("scenefile")
 parser.add_argument("--planner-id", dest="planner_id", default="")
+parser.add_argument("--pause_after_response",action="store_true")
+parser.add_argument("--max_planning_time", type=int, default=10)
 args = parser.parse_args()
 
 import subprocess, os
@@ -73,6 +75,7 @@ def build_joint_request(jvals, arm, robot, initial_state=build_robot_state(), pl
     jc = JointConstraint()
 
     m.goal_constraints = [c]
+    m.allowed_planning_time = rospy.Duration(args.max_planning_time)
     return m
     
 
@@ -105,6 +108,7 @@ def build_cart_request(pos, quat, arm, initial_state = build_robot_state(), plan
     c.orientation_constraints = [ oc ]
     m.goal_constraints = [ c ]
     
+    m.allowed_planning_time = rospy.Duration(args.max_planning_time)
     return m
     
 def robot_state_from_pose_goal(xyz, xyzw, arm, robot, initial_state = build_robot_state()):
@@ -140,9 +144,12 @@ def test_plan_to_pose(xyz, xyzw, leftright, robot, planner_id=''):
         pass
     # assert isinstance(response, MotionPlanResponse)
 
+    if args.pause_after_response:
+        raw_input("press enter to continue")
+
     if response is not None:
         traj =  [list(jtp.positions) for jtp in response.trajectory.joint_trajectory.points]
-        return dict(returned = True, safe = not has_collision(traj, manip), traj = traj, planning_time = response.planning_time)
+        return dict(returned = True, safe = not check_traj(traj, manip, 100), traj = traj, planning_time = response.planning_time)
     else:
         return dict(returned = False)
 
