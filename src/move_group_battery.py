@@ -178,8 +178,8 @@ def main():
     loadsuccess = env.Load(envfile)    
     assert loadsuccess
     
-    get_motion_plan = rospy.ServiceProxy('trajopt_planner', GetMotionPlan)    
-    print "waiting for trajopt_planner"
+    get_motion_plan = rospy.ServiceProxy('plan_kinematic_path', GetMotionPlan)    
+    print "waiting for plan_kinematic_path"
     get_motion_plan.wait_for_service()
     print "ok"
     
