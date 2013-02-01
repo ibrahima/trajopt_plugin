@@ -216,6 +216,7 @@ def warehouse_scene_pairwise_test(initial_state_id, goal_constraint_starts_with,
     base_p = base_pose.position
     t = rave.matrixFromPose([base_q.w, base_q.x, base_q.y, base_q.z, base_p.x, base_p.y, base_p.z])
     robot.SetTransform(t)
+    update_rave_from_ros(robot, initial_state.joint_state.position, initial_state.joint_state.name)
 
     for c in constraints:
         pos, quat = pose_constraints_to_xyzquat(c)
