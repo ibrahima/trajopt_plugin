@@ -3,7 +3,9 @@
 import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument("scenefile")
+parser.add_argument("--planner-id", dest="planner_id", default="")
 args = parser.parse_args()
+
 import subprocess, os
 
 envfile = "/tmp/%s.xml"%os.path.basename(args.scenefile)
@@ -134,7 +136,7 @@ def robot_state_from_pose_goal(xyz, xyzw, arm, robot, initial_state = build_robo
     new_state = alter_robot_state(initial_state, joint_names, joint_values)
     return new_state
 
-def test_plan_to_pose(xyz, xyzw, leftright, robot):
+def test_plan_to_pose(xyz, xyzw, leftright, robot, planner_id=''):
     manip = robot.GetManipulator(leftright + "arm")
 
     joint_solutions = ku.ik_for_link(rave.matrixFromPose(np.r_[xyzw[3], xyzw[:3], xyz]), manip, "%s_gripper_tool_frame"%leftright[0], 
@@ -144,7 +146,7 @@ def test_plan_to_pose(xyz, xyzw, leftright, robot):
         print "pose is not reachable"
         return None
 
-    m = build_joint_request(joint_solutions[0], leftright, robot)
+    m = build_joint_request(joint_solutions[0], leftright, robot, planner_id=planner_id)
 
     t1 = time.time()
     t2 = time.time()
@@ -188,12 +190,11 @@ def main():
     
     robot = env.GetRobots()[0]
     update_rave_from_ros(robot, ROS_DEFAULT_JOINT_VALS, ROS_JOINT_NAMES)
-    
-
+  
     xs, ys, zs = np.mgrid[.35:.65:.05, 0:.5:.05, .8:.9:.1]
     results = []
     for (x,y,z) in zip(xs.flat, ys.flat, zs.flat):
-        result = test_plan_to_pose([x,y,z], [0,0,0,1], "left", robot)
+        result = test_plan_to_pose([x,y,z], [0,0,0,1], "left", robot, planner_id=args.planner_id)
         if result is not None: results.append(result)
         
     success_count, fail_count, no_answer_count = 0,0,0
