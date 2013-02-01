@@ -175,7 +175,7 @@ def test_plan_to_pose(xyz, xyzw, leftright, robot):
     t1 = time.time()
     #client.wait_for_result()
     t2 = time.time()
-    response = get_motion_plan(m)
+    response = get_motion_plan(m.request).motion_plan_response
     print response.planning_time
     traj =  [list(jtp.positions) for jtp in response.trajectory.joint_trajectory.points]
     if response is not None:
