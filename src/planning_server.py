@@ -163,5 +163,5 @@ if __name__ == "__main__":
     env.Load(envfile)
     robot = env.GetRobots()[0]
     
-    svc = rospy.Service('trajopt_planner', ms.GetMotionPlan, callback)
+    svc = rospy.Service('plan_kinematic_path', ms.GetMotionPlan, callback)
     rospy.spin()
