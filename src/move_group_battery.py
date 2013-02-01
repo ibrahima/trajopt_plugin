@@ -4,6 +4,8 @@ import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument("scenefile")
 parser.add_argument("--planner-id", dest="planner_id", default="")
+parser.add_argument("--pause_after_response",action="store_true")
+parser.add_argument("--max_planning_time", type=int, default=10)
 args = parser.parse_args()
 
 import subprocess, os
@@ -27,6 +29,8 @@ from trajopt_plugin.srv import *
 import trajoptpy.math_utils as mu
 import trajoptpy.kin_utils as ku
 
+from check_traj import check_traj
+
 import actionlib
 
 import time
@@ -46,24 +50,6 @@ def alter_robot_state(robot_state, joints, values):
     robot_state.joint_state.name = unzipped[0]
     robot_state.joint_state.position = unzipped[1]
     
-def has_collision(traj, manip):
-    traj_up = mu.interp2d(np.linspace(0,1,100), np.linspace(0,1,len(traj)), traj)
-    robot = manip.GetRobot()
-    ss = rave.RobotStateSaver(robot)
-    arm_inds = manip.GetArmIndices()
-    env = robot.GetEnv()
-    collision = False
-    col_times = []
-    for (i,row) in enumerate(traj_up):
-        robot.SetDOFValues(row, arm_inds)
-        col_now = env.CheckCollision(robot)
-        if col_now: 
-            collision = True
-            col_times.append(i)
-    if col_times: print "collision at timesteps", col_times      
-    else: print "no collisions"
-    return collision
-
 def build_robot_state(joint_names=ROS_JOINT_NAMES, joint_values=ROS_DEFAULT_JOINT_VALS):
     start_state = RobotState()
     start_state.joint_state.name = joint_names
@@ -89,6 +75,7 @@ def build_joint_request(jvals, arm, robot, initial_state=build_robot_state(), pl
     jc = JointConstraint()
 
     m.goal_constraints = [c]
+    m.allowed_planning_time = rospy.Duration(args.max_planning_time)
     return m
     
 def build_constraints_request(arm, constraints, initial_state=build_robot_state(), planner_id=''):
@@ -128,6 +115,7 @@ def build_cart_request(pos, quat, arm, initial_state = build_robot_state(), plan
     c.position_constraints = [ pc ]
     c.orientation_constraints = [ oc ]
     m.goal_constraints = [ c ]
+    m.allowed_planning_time = rospy.Duration(args.max_planning_time)
     return m
     
 def robot_state_from_pose_goal(xyz, xyzw, arm, robot, initial_state = build_robot_state()):
@@ -164,9 +152,12 @@ def test_plan_to_pose(xyz, xyzw, leftright, robot, initial_state = build_robot_s
         pass
     # assert isinstance(response, MotionPlanResponse)
 
+    if args.pause_after_response:
+        raw_input("press enter to continue")
+
     if response is not None:
         traj =  [list(jtp.positions) for jtp in response.trajectory.joint_trajectory.points]
-        return dict(returned = True, safe = not has_collision(traj, manip), traj = traj, planning_time = response.planning_time)
+        return dict(returned = True, safe = not check_traj(traj, manip, 100), traj = traj, planning_time = response.planning_time)
     else:
         return dict(returned = False)
     

@@ -23,7 +23,7 @@ TrajoptInterfaceROS::TrajoptInterfaceROS(const kinematic_model::KinematicModelCo
 //  ros::init(argc, argv, "asdf");
 //  cout << "ros ok? " << ros::ok() << endl;
 //  sleep(.2);
-  planner_ = nh_.serviceClient<moveit_msgs::GetMotionPlan>("/trajopt_planner");
+  planner_ = nh_.serviceClient<moveit_msgs::GetMotionPlan>("/plan_kinematic_path");
   bool waitSuccess = planner_.waitForExistence(ros::Duration(.2));
 
 }
