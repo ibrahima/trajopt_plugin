@@ -37,6 +37,14 @@ import openravepy as rave, numpy as np
 ROS_JOINT_NAMES = ['br_caster_rotation_joint', 'br_caster_l_wheel_joint', 'br_caster_r_wheel_joint', 'torso_lift_joint', 'head_pan_joint', 'head_tilt_joint', 'laser_tilt_mount_joint', 'r_shoulder_pan_joint', 'r_shoulder_lift_joint', 'r_upper_arm_roll_joint', 'r_elbow_flex_joint', 'r_forearm_roll_joint', 'r_wrist_flex_joint', 'r_wrist_roll_joint', 'r_gripper_motor_slider_joint', 'r_gripper_motor_screw_joint', 'r_gripper_l_finger_joint', 'r_gripper_l_finger_tip_joint', 'r_gripper_r_finger_joint', 'r_gripper_r_finger_tip_joint', 'r_gripper_joint', 'l_shoulder_pan_joint', 'l_shoulder_lift_joint', 'l_upper_arm_roll_joint', 'l_elbow_flex_joint', 'l_forearm_roll_joint', 'l_wrist_flex_joint', 'l_wrist_roll_joint', 'l_gripper_motor_slider_joint', 'l_gripper_motor_screw_joint', 'l_gripper_l_finger_joint', 'l_gripper_l_finger_tip_joint', 'l_gripper_r_finger_joint', 'l_gripper_r_finger_tip_joint', 'l_gripper_joint', 'torso_lift_motor_screw_joint', 'fl_caster_rotation_joint', 'fl_caster_l_wheel_joint', 'fl_caster_r_wheel_joint', 'fr_caster_rotation_joint', 'fr_caster_l_wheel_joint', 'fr_caster_r_wheel_joint', 'bl_caster_rotation_joint', 'bl_caster_l_wheel_joint', 'bl_caster_r_wheel_joint']
 ROS_DEFAULT_JOINT_VALS = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -0.657967, 0.888673, -1.4311, -1.073419, -0.705232, -1.107079, 2.806742, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.848628, 0.7797, 1.396294, -0.828274, 0.687905, -1.518703, 0.394348, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 
+def alter_robot_state(robot_state, joints, values):
+    d = dict(zip(robot_state.joint_state.name, robot_state.joint_state.position))
+    for joint_name, value in zip(joints, values):
+        d[joint_name] = value
+    unzipped = zip(*d)
+    robot_state.joint_state.name = unzipped[0]
+    robot_state.joint_state.position = unzipped[1]
+    
 def has_collision(traj, manip):
     traj_up = mu.interp2d(np.linspace(0,1,100), np.linspace(0,1,len(traj)), traj)
     robot = manip.GetRobot()
@@ -54,43 +62,39 @@ def has_collision(traj, manip):
     if col_times: print "collision at timesteps", col_times            
     return collision
 
-def build_joint_request(jvals, arm, robot):
-    m = MoveGroupGoal()
-    m.request.group_name = "%s_arm" % arm
-    m.request.start_state.joint_state.name = ROS_JOINT_NAMES
-    m.request.start_state.joint_state.position = ROS_DEFAULT_JOINT_VALS
-    m.request.start_state.multi_dof_joint_state.joint_names =  ['world_joint']
-    m.request.start_state.multi_dof_joint_state.frame_ids = ['odom_combined']
-    m.request.start_state.multi_dof_joint_state.child_frame_ids = ['base_footprint']
+def build_robot_state(joint_names=ROS_JOINT_NAMES, joint_values=ROS_DEFAULT_JOINT_VALS):
+    start_state = RobotState()
+    start_state.joint_state.name = joint_names
+    start_state.joint_state.position = joint_values
+    start_state.multi_dof_joint_state.joint_names =  ['world_joint']
+    start_state.multi_dof_joint_state.frame_ids = ['odom_combined']
+    start_state.multi_dof_joint_state.child_frame_ids = ['base_footprint']
     base_pose = Pose()
     base_pose.orientation.w = 1
-    m.request.start_state.multi_dof_joint_state.poses = [ base_pose ]
-    
-    
+    start_state.multi_dof_joint_state.poses = [ base_pose ]
+    return start_state
+
+def build_joint_request(jvals, arm, robot, initial_state=build_robot_state()):
+    m = MoveGroupGoal()
+    m.request.group_name = "%s_arm" % arm
+    m.request.start_state = initial_state
+        
     c = Constraints()
     joints = robot.GetJoints()
     joint_inds = robot.GetManipulator("%sarm"%arm).GetArmIndices()
     c.joint_constraints = [JointConstraint(joint_name=joints[joint_inds[i]].GetName(), position = jvals[i])
                            for i in xrange(len(jvals))]
     jc = JointConstraint()
-                                          
+
     m.request.goal_constraints = [c]
     return m
     
 
-def build_motion_plan_request(pos, quat, arm):
+def build_motion_plan_request(pos, quat, arm, initial_state = build_robot_state()):
     m = MoveGroupGoal()
     m.request.group_name = "%s_arm" % arm
     target_link = "%s_wrist_roll_link" % arm[0]
-    m.request.start_state.joint_state.name = ROS_JOINT_NAMES
-    m.request.start_state.joint_state.position = ROS_DEFAULT_JOINT_VALS
-
-    m.request.start_state.multi_dof_joint_state.joint_names =  ['world_joint']
-    m.request.start_state.multi_dof_joint_state.frame_ids = ['odom_combined']
-    m.request.start_state.multi_dof_joint_state.child_frame_ids = ['base_footprint']
-    base_pose = Pose()
-    base_pose.orientation.w = 1
-    m.request.start_state.multi_dof_joint_state.poses = [ base_pose ]
+    m.request.start_state = initial_state
 
     pc = PositionConstraint()
     pc.link_name = target_link
@@ -168,7 +172,7 @@ def test_plan_to_pose(xyz, xyzw, leftright, robot):
     response = get_motion_plan(m.request).motion_plan_response
     t2 = time.time()
 
-    print response.planning_time
+    print response.planning_time.to_sec()
     traj =  [list(jtp.positions) for jtp in response.trajectory.joint_trajectory.points]
     if response is not None:
         return not has_collision(traj, manip)
