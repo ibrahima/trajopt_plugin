@@ -91,6 +91,14 @@ def build_joint_request(jvals, arm, robot, initial_state=build_robot_state(), pl
     m.goal_constraints = [c]
     return m
     
+def build_constraints_request(arm, constraints, initial_state=build_robot_state(), planner_id=''):
+    m = MotionPlanRequest()
+    m.group_name = "%s_arm" % arm
+    m.start_state = initial_state
+    m.planner_id = planner_id
+    m.goal_constraints = [constraints]
+    return m
+
 
 def build_cart_request(pos, quat, arm, initial_state = build_robot_state(), planner_id=''):
     m = MotionPlanRequest()
@@ -120,7 +128,6 @@ def build_cart_request(pos, quat, arm, initial_state = build_robot_state(), plan
     c.position_constraints = [ pc ]
     c.orientation_constraints = [ oc ]
     m.goal_constraints = [ c ]
-    
     return m
     
 def robot_state_from_pose_goal(xyz, xyzw, arm, robot, initial_state = build_robot_state()):
@@ -147,11 +154,12 @@ def test_plan_to_pose(xyz, xyzw, leftright, robot, initial_state = build_robot_s
 
     m = build_joint_request(joint_solutions[0], leftright, robot, initial_state, planner_id=planner_id)
 
-    t1 = time.time()
-    t2 = time.time()
+
     response = None
     try:
+        t1 = time.time()
         response = get_motion_plan(m).motion_plan_response
+        t2 = time.time()
     except rospy.service.ServiceException:
         pass
     # assert isinstance(response, MotionPlanResponse)
@@ -161,7 +169,7 @@ def test_plan_to_pose(xyz, xyzw, leftright, robot, initial_state = build_robot_s
         return dict(returned = True, safe = not has_collision(traj, manip), traj = traj, planning_time = response.planning_time)
     else:
         return dict(returned = False)
-
+    
 def update_rave_from_ros(robot, ros_values, ros_joint_names):
     inds_ros2rave = np.array([robot.GetJointIndex(name) for name in ros_joint_names])
     good_ros_inds = np.flatnonzero(inds_ros2rave != -1) # ros joints inds with matching rave joint
@@ -182,7 +190,18 @@ def warehouse_test(initial_state_id, goal_constraint_starts_with):
     constraints = constraints_db.get_messages(Constraints, query)
     print initial_state
     print len(constraints)
-    
+    for c in constraints:
+        print pose_constraints_to_xyzquat(c)
+
+
+def pose_constraints_to_xyzquat(constraints):
+    """
+    Converts a pose goal in constraints form to a position and quaternion
+    """
+    pos = constraints.position_constraints[0].constraint_region.primitive_poses[0].position
+    quat = constraints.orientation_constraints[0].orientation
+    return (pos, quat)
+
 def main():
     global get_motion_plan, env, robot
     if rospy.get_name() == "/unnamed":
