@@ -33,8 +33,7 @@ import time
 import numpy as np
 import json
 import openravepy as rave, numpy as np
-
-
+from visualization_msgs.msg import *
 
 ROS_JOINT_NAMES = ['br_caster_rotation_joint', 'br_caster_l_wheel_joint', 'br_caster_r_wheel_joint', 'torso_lift_joint', 'head_pan_joint', 'head_tilt_joint', 'laser_tilt_mount_joint', 'r_shoulder_pan_joint', 'r_shoulder_lift_joint', 'r_upper_arm_roll_joint', 'r_elbow_flex_joint', 'r_forearm_roll_joint', 'r_wrist_flex_joint', 'r_wrist_roll_joint', 'r_gripper_motor_slider_joint', 'r_gripper_motor_screw_joint', 'r_gripper_l_finger_joint', 'r_gripper_l_finger_tip_joint', 'r_gripper_r_finger_joint', 'r_gripper_r_finger_tip_joint', 'r_gripper_joint', 'l_shoulder_pan_joint', 'l_shoulder_lift_joint', 'l_upper_arm_roll_joint', 'l_elbow_flex_joint', 'l_forearm_roll_joint', 'l_wrist_flex_joint', 'l_wrist_roll_joint', 'l_gripper_motor_slider_joint', 'l_gripper_motor_screw_joint', 'l_gripper_l_finger_joint', 'l_gripper_l_finger_tip_joint', 'l_gripper_r_finger_joint', 'l_gripper_r_finger_tip_joint', 'l_gripper_joint', 'torso_lift_motor_screw_joint', 'fl_caster_rotation_joint', 'fl_caster_l_wheel_joint', 'fl_caster_r_wheel_joint', 'fr_caster_rotation_joint', 'fr_caster_l_wheel_joint', 'fr_caster_r_wheel_joint', 'bl_caster_rotation_joint', 'bl_caster_l_wheel_joint', 'bl_caster_r_wheel_joint']
 ROS_DEFAULT_JOINT_VALS = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -0.657967, 0.888673, -1.4311, -1.073419, -0.705232, -1.107079, 2.806742, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.848628, 0.7797, 1.396294, -0.828274, 0.687905, -1.518703, 0.394348, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
@@ -192,7 +191,7 @@ def main():
     env.Load("robots/pr2-beta-static.zae")
     loadsuccess = env.Load(envfile)    
     assert loadsuccess
-    
+    markerpub = rospy.Publisher('battery_targets', Marker)
     get_motion_plan = rospy.ServiceProxy('plan_kinematic_path', GetMotionPlan)    
     print "waiting for plan_kinematic_path"
     get_motion_plan.wait_for_service()
@@ -202,9 +201,23 @@ def main():
     update_rave_from_ros(robot, ROS_DEFAULT_JOINT_VALS, ROS_JOINT_NAMES)
   
     xs, ys, zs = np.mgrid[.35:.65:.05, 0:.5:.05, .8:.9:.1]
+
+    def publish_marker(x, y, z):
+        marker = Marker()
+        marker.header.frame_id='odom_combined'
+        marker.type=1
+        marker.pose.position.x=x
+        marker.pose.position.y=y
+        marker.pose.position.z=z
+        marker.pose.orientation.w=1
+        marker.scale.x = marker.scale.y = marker.scale.z=0.1
+        marker.id = (x,y,z).__hash__()% 100
+        markerpub.publish(marker)
+
     results = []
     for (x,y,z) in zip(xs.flat, ys.flat, zs.flat):
         result = test_plan_to_pose([x,y,z], [0,0,0,1], "left", robot, planner_id=args.planner_id)
+        # publish_marker(x, y, z)
         if result is not None: results.append(result)
         
     success_count, fail_count, no_answer_count = 0,0,0
